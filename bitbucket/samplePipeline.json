@@ -1,0 +1,76 @@
+{
+  "uuid": "{f7f8cf69-d97b-4b86-857e-aa6505737906}",
+  "repository": {
+    "type": "repository",
+    "full_name": "slug/testing-testing",
+    "links": {
+      "self": {
+        "href": "https://api.bitbucket.org/2.0/repositories/slug/testing-testing"
+      },
+      "html": {
+        "href": "https://bitbucket.org/slug/testing-testing"
+      },
+      "avatar": {
+        "href": "https://bytebucket.org/ravatar/%7Be233ffab-3b47-45e3-ace2-04451e36140b%7D?ts=2475184"
+      }
+    },
+    "name": "cypress-testing",
+    "uuid": "{e233ffab-3b47-45e3-ace2-04451e36140b}"
+  },
+  "state": {
+    "name": "COMPLETED",
+    "type": "pipeline_state_completed",
+    "result": {
+      "name": "FAILED",
+      "type": "pipeline_state_completed_failed"
+    }
+  },
+  "build_number": 9,
+  "creator": {
+    "type": "user",
+    "uuid": "{ed1128ee-932c-4980-b413-0cd7a573e2a9}"
+  },
+  "created_on": "2019-11-01T21:24:38.589Z",
+  "completed_on": "2019-11-01T21:30:20.661Z",
+  "target": {
+    "ref_type": "branch",
+    "ref_name": "mads/pipeline",
+    "selector": {
+      "type": "custom",
+      "pattern": "user-specified-instance"
+    },
+    "commit": {
+      "hash": "7dd4cf48832fd64bd58176e5598632f49f487ad",
+      "links": {
+        "self": {
+          "href": "https://api.bitbucket.org/2.0/repositories/slug/testing-testing/commit/b7dd4cf48832fd64bd58176e5598632f49f487ad"
+        },
+        "html": {
+          "href": "https://bitbucket.org/slug/testing-testing/commits/b7dd4cf48832fd64bd58176e5598632f49f487ad"
+        }
+      },
+      "type": "commit"
+    },
+    "type": "pipeline_ref_target"
+  },
+  "trigger": {
+    "name": "MANUAL",
+    "type": "pipeline_trigger_manual"
+  },
+  "run_number": 1,
+  "duration_in_seconds": 329,
+  "build_seconds_used": 328,
+  "first_successful": false,
+  "expired": true,
+  "links": {
+    "self": {
+      "href": "http://bitbucket-pipelines.prod.public.atl-paas.net//rest/1.0/accounts/{c894e076-f376-4c7b-b44e-c304f9bfdaf4}/repositories/{e233ffab-3b47-45e3-ace2-04451e36140b}/pipelines/{f7f8cf69-d97b-4b86-857e-aa6505737906}"
+    },
+    "steps": {
+      "href": "http://bitbucket-pipelines.prod.public.atl-paas.net//rest/1.0/accounts/{c894e076-f376-4c7b-b44e-c304f9bfdaf4}/repositories/{e233ffab-3b47-45e3-ace2-04451e36140b}/pipelines/{f7f8cf69-d97b-4b86-857e-aa6505737906}/steps"
+    }
+  },
+  "has_variables": true,
+  "labels": {},
+  "type": "pipeline"
+}

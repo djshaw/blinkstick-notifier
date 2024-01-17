@@ -1,0 +1,18 @@
+alerts:
+    - type:     WorkCalendarEvent
+      color:    Red
+
+    - type:     MyCalendarEvent
+      color:    Amber
+
+    - type:     ApproachingWorkCalendarEvent
+      color:    LightBlue
+
+    - type:     ApproachingMyCalendarEvent
+      color:    Blue
+
+    - type:     WorkEmail
+      color:    Red
+      blink:    true
+      duration: 3
+

@@ -1,0 +1,36 @@
+{
+    "receiver":"pager",
+    "status":"firing",
+    "alerts":[
+        {
+            "status":"firing",
+            "labels":{"alertname":"credentialsInvalid","calendar":"john.doe@example.com","instance":"calendarListener:9000","job":"everything","severity":"critical"},
+            "annotations":{"description":"calendarListener:9000 of job everything has been invalid for more than 1 minute","title":"Credentials john.doe@example.com are invalid"},
+            "startsAt":"2023-10-18T14:10:40.412Z",
+            "endsAt":"0001-01-01T00:00:00Z",
+            "generatorURL":"http://57674b8e39b9:9090/graph?g0.expr=credentialsInvalid+%21%3D+0\\u0026g0.tab=1",
+            "fingerprint":"ca763469b19eccc6"
+        }
+    ],
+    "groupLabels":
+        {
+            "alertname":"credentialsInvalid"
+        },
+    "commonLabels":
+        {
+            "alertname":"credentialsInvalid",
+            "calendar":"john.doe@example.com",
+            "instance":"calendarListener:9000",
+            "job":"everything",
+            "severity":"critical"
+        },
+    "commonAnnotations":
+        {
+            "description":"calendarListener:9000 of job everything has been invalid for more than 1 minute",
+            "title":"Credentials john.doe@example.com are invalid"
+        },
+    "externalURL":"http://8128126aa707:9093",
+    "version":"4",
+    "groupKey":"{}:{alertname=\"credentialsInvalid\"}",
+    "truncatedAlerts":0
+}

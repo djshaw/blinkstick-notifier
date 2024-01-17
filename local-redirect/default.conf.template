@@ -1,0 +1,7 @@
+error_log /dev/stdout debug;
+server {
+	listen 8080;
+
+	return 307          http://blinkstick:8080$request_uri;
+}
+

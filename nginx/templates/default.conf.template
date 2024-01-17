@@ -1,0 +1,79 @@
+error_log /dev/stdout debug;
+
+server {
+    listen              8443 ssl;
+    server_name         promlife;
+    return 307          http://$host:8080$request_uri;
+    ssl_certificate     nginx-selfsigned.crt;
+    ssl_certificate_key nginx-selfsigned.key;
+}
+
+server {
+    listen 8080;
+    resolver 127.0.0.11 ipv6=off valid=1s;
+
+    location = /favicon.ico {
+        access_log     off;
+        log_not_found     off;
+        try_files $uri     =204;
+    }
+
+    location /ws/ {
+        proxy_pass http://led-controller:9099;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+        proxy_set_header Host $host;
+    }
+
+    location /outlookListener/ws/ {
+        proxy_pass http://outlook-listener:1011;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+        proxy_set_header Host $host;
+    }
+
+    location /bitbucket {
+        # TODO: rename bitbucketListener?
+        proxy_pass http://bitbucket:8080$request_uri;
+        proxy_set_header Host $host;
+    }
+
+    location /calendarListener {
+        proxy_pass http://calendar-listener:8080$request_uri;
+        proxy_set_header Host $host;
+    }
+
+    location /outlookListener {
+        proxy_pass http://outlook-listener:8080$request_uri;
+        proxy_set_header Host $host;
+    }
+
+    location /webhook {
+        proxy_pass http://webhook:8080$request_uri;
+        proxy_set_header Host $host;
+    }
+
+    location /ledController {
+        proxy_pass http://led-controller:8080$request_uri;
+        proxy_set_header Host $host;
+    }
+
+    location /metrics {
+        stub_status;
+    }
+
+    #location /status {
+    #    vhost_traffic_status_display;
+    #    vhost_traffic_status_display_format html;
+    #}
+
+    location / {
+        # TODO: this isn't rewriting as I expected. It should rewrite so there's only one
+        # canonical path.
+        rewrite ^/?$ /ledController;
+        root /usr/share/nginx/html/;
+    }
+}
+

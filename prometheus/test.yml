@@ -1,0 +1,20 @@
+rule_files:
+    - rules.yml
+
+tests:
+  - interval: 1m
+    input_series:
+      - servies: 'up{job="prometheus", instance="localhost:9001"}'
+        values: 0 0 0 0 0 0
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: InstanceDown
+        exp_alerts:
+          - exp_labels:
+                severity: critical
+                instance: localhost:9001
+                job: promethus
+            exp_annotations:
+                summary: "Instance localhost:9001 is down"
+                description: "localhost:9001 of job prometheus has been down for more than 1 minute"
+

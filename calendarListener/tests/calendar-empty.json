@@ -1,0 +1,51 @@
+{
+  "kind": "calendar#events",
+  "etag": "\"p33odbu4lgup840o\"",
+  "summary": "john.doe@example.com",
+  "description": "",
+  "updated": "2023-11-07T14:04:25.270Z",
+  "timeZone": "America/Toronto",
+  "accessRole": "owner",
+  "defaultReminders": [
+    {
+      "method": "popup",
+      "minutes": 10
+    }
+  ],
+  "nextPageToken": "",
+  "items": [
+    {
+      "kind": "calendar#event",
+      "etag": "\"33\"",
+      "id": "6d",
+      "status": "confirmed",
+      "htmlLink": "https://www.google.com/calendar/event?eid=Nm",
+      "created": "2023-10-26T17:13:58.000Z",
+      "updated": "2023-10-26T17:13:58.892Z",
+      "summary": "bin",
+      "creator": {
+        "email": "john.doe@example.com",
+        "self": true
+      },
+      "organizer": {
+        "email": "john.doe@example.com",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2023-11-17T10:45:00-05:00",
+        "timeZone": "America/Toronto"
+      },
+      "end": {
+        "dateTime": "2023-11-17T11:45:00-05:00",
+        "timeZone": "America/Toronto"
+      },
+      "iCalUID": "6d@google.com",
+      "sequence": 0,
+      "reminders": {
+        "useDefault": true
+      },
+      "eventType": "default"
+    }
+  ]
+}
+

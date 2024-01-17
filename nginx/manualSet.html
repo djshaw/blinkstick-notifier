@@ -1,0 +1,115 @@
+<html>
+    <head>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css">
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+        <script src="js-yaml.js"></script>
+        <script>
+            $( document ).ready( function() {
+                function showOverlay()
+                {
+                    document.getElementById( "overlay" ).style.display = "block"
+                }
+
+                function hideOverlay()
+                {
+                    document.getElementById( "overlay" ).style.display = "none"
+                }
+                let ws = new Promise( (resolve, reject) => {
+                    webSocket = new WebSocket( "ws://" + location.host + "/ws/a" );
+                    webSocket.addEventListener( "open", (event) =>
+                    {
+                        hideOverlay();
+                        resolve( webSocket );
+
+                        webSocket.send( JSON.stringify( {"name": "ManualSet"} ) );
+			function keepAlive()
+		        {
+			    if( webSocket.readyState == WebSocket.CLOSED )
+			    {
+				return;
+			    }
+			    webSocket.send( JSON.stringify( {"ping": true} ) );
+			    setTimeout( keepAlive, 10 * 1000 );
+		        }
+			keepAlive();
+                    } );
+                    webSocket.addEventListener( "close", (event) =>
+                    {
+                        showOverlay();
+                    } );
+                })
+                // TODO: if a websocket connection cannot be established or is lost, throw
+                // up a semitransparent div overtop of everything indicating a connection
+                // doesn't exist. Potentially periodically try to reconnect.
+
+                // TODO: The websocket connection eventually times out if there's no
+                // activity over the websocket
+                $.get( "/config.yml" )
+                 .done(function(data) {
+                    let config = jsyaml.load( data )
+                    let append = "";
+                    for( let i = 0; i < config.length; i += 1 )
+                    {
+                        append += "<tr><td>" + config[i].name + "</td><td><button class=\"btn btn-primary\">Enable</button></td></tr>"
+                    }
+                    $( "#table" )[0].innerHTML = append;
+                    $( "#table button" )
+                        .click( function( element )
+                        {
+                            if( element.target.innerHTML == "Enable" )
+                            {
+                                ws.then( (websocket) =>
+                                {
+                                    websocket.send( JSON.stringify( {"enable": element.target.parentElement.previousSibling.innerHTML} ) );
+                                    element.target.innerHTML = "Disable";
+                                    element.target.classList.remove( "btn-primary" );
+                                    element.target.classList.add( "btn-outline-primary" );
+                                } );
+                            }
+                            else if( element.target.innerHTML == "Disable" )
+                            {
+                                ws.then( (websocket) =>
+                                {
+                                    websocket.send( JSON.stringify( {"disable": element.target.parentElement.previousSibling.innerHTML} ) );
+                                    element.target.innerHTML = "Enable";
+                                    element.target.classList.remove( "btn-outline-primary" );
+                                    element.target.classList.add( "btn-primary" );
+                                } );
+                            }
+                        } )
+                 } );
+            } );
+        </script>
+        <style>
+            /* Something is disabling the color of btn-primary. Reassert it here. */
+            btn.a.btn-primary {
+                color: #fff;
+            }
+
+            #overlay {
+                position:         fixed;           /* Sit on top of the page content */
+                display:          none;            /* Hidden by default */
+                width:            100%;            /* Full width (cover the whole page) */
+                height:           100%;            /* Full height (cover the whole page) */
+                top:              0;
+                left:             0;
+                right:            0;
+                bottom:           0;
+                background-color: rgba(0,0,0,0.5); /* Black background with opacity */
+                z-index:          2;               /* Specify a stack order in case you're using a different order for other elements */
+                cursor:           pointer;         /* Add a pointer on hover */
+            }
+        </style>
+    </head>
+    <body>
+        <div id="overlay">
+	    <div style="display: flex; justify-content: center; align-items: center;">
+	        <div style="margin: 70px; padding: 10px; border: 1px solid red; color: red; background: white">
+		    Websocket connection lost
+	        </div>
+	    </div>
+	</div>
+        <table class="table" id="table">
+        </table>
+    </body>
+</html>

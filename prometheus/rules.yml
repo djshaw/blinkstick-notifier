@@ -1,0 +1,40 @@
+groups:
+- name: AllInstances
+  rules:
+  - alert: HasBlinkstick
+    expr: 'hasBlinkstick != 1'
+    annotations:
+        title: 'Cannot find the physical blinkstick'
+        description: 'The led-controller cannot find the blinkstick'
+    labels:
+        severity: 'critical'
+
+  # TODO: make the severity non-critical if grafana/loki/promtail is down?
+  - alert: InstanceDown
+    # The docker metrics don't include an "up" metric
+    expr: 'up{instance != "localhost:9323"} == 0'
+    annotations:
+      title: 'Instance {{ $labels.instance }} is down'
+      description: '{{ $labels.instance }} of job {{ $labels.job }} is down'
+    labels:
+      severity: 'critical'
+
+  - alert: credentialsInvalid
+    expr: credentialsInvalid != 0 or credentailsExpired != 0
+    annotations:
+        title: 'Credentials {{ $labels.calendar }} are invalid'
+        description: '{{ $labels.instance }} of job {{ $labels.job }} is invalid'
+    labels:
+        severity: 'critical'
+
+  - alert: workunitExceptions
+    expr: workunitExceptions != 0
+
+  - alert: missingClient
+    expr: 'clients{type=~"[^ManualSet|None].*"} == 0'
+
+  - alert: clientWithoutName
+    expr: 'clients{type="None"} > 0'
+
+  - alert: testAlert
+    expr:  'testAlert == 1'

@@ -1,0 +1,12 @@
+[secrets]
+    # bitbucket API key (e.g. "foo_bar:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+    patterns = [a-zA-Z_]+:[a-zA-Z0-9]{36}
+
+    # Generic password variable
+    patterns = [Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd]\\s*[=:]
+
+    # google credentials file key (e.g. "client_secret":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+    patterns = \"client_secret\"\\s*:\\s*\"[a-zA-Z0-9\\-]+\"
+
+    # Outlook client secret
+    patterns = \"[a-zA-Z0-9\\.~_]{40}\"

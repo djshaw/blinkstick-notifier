@@ -1,0 +1,13 @@
+version: '3.3'
+
+# Run with `$ docker-compose up`
+services:
+    nginx:
+        image: nginx
+        volumes:
+            - "./default.conf.template:/etc/nginx/templates/default.conf.template:ro"
+        ports:
+            - 8080:8080
+        restart: always
+        command: [nginx-debug, '-g', 'daemon off;']
+

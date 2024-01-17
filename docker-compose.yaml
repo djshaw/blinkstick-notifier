@@ -1,0 +1,273 @@
+version: '3.7'
+
+x-logging: &loki-logging
+    driver: json-file
+    options:
+        tag: "{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}"
+
+services:
+    test-workunit:
+        build:
+            context: workunit
+        volumes:
+            - "./workunit/workunit.py:/app/workunit.py:ro"
+            - "./workunit/test.py:/app/test.py:ro"
+            - "./heap/heap.py:/app/heap.py:ro"
+        command: ["python3", "/app/test.py"]
+
+
+    test-websocketclient:
+        build:
+            context: websocketClient
+        volumes:
+            - "./websocketClient/websocketClient.py:/app/websocketClient.py:ro"
+            - "./websocketClient/test.py:/app/test.py:ro"
+        command: ["python3", "/app/test.py"]
+
+
+    test-webhook:
+        build:
+            context: .
+            dockerfile: webhook/Dockerfile
+        volumes:
+            - "./webhook/config.yml:/app/config.yml:ro"
+            - "./webhook/sampleMultiSetMessage.json:/app/sampleMultiSetMessage.json:ro"
+            - "./webhook/sampleSetMessage.json:/app/sampleSetMessage.json:ro"
+            - "./webhook/webhookTest.py:/app/webhookTest.py:ro"
+        command: ["python3", "webhookTest.py"]
+
+
+    # using detect-secrets to check for secrets and password:
+    # Create a baseline with
+    #     detect-secrets --baseline .secrets.baseline $( find . -name .svn -prune -or -type f -print )
+    #
+    # Audit what it found:
+    #     detect-secrets audit .secrets.baseline
+    #
+    # Then check for secrets with
+    #     detect-secrets-hook --baseline .secrets.baseling $( find . -name .svn -prune -or -type f -print )
+    #
+    # Problem: detect-secrets-hook fails with:
+    #     error: Unable to read baseline.
+
+
+    led-controller:
+        volumes:
+            - "/dev/bus/usb:/dev/bus/usb:rw"
+        privileged: true
+        build:
+            context: .
+            dockerfile: ledController/Dockerfile
+        restart: unless-stopped
+        healthcheck:
+            interval: 10s
+            timeout: 20s
+            retries: 3
+        logging: *loki-logging
+
+
+    test-led-controller:
+        build:
+            context: .
+            dockerfile: ledController/Dockerfile
+        volumes:
+            - "./ledController/blinkstickThreadTest.py:/app/blinkstickThreadTest.py:ro"
+        command: ["python3", "/app/blinkstickThreadTest.py"]
+
+
+    calendar-listener:
+        volumes:
+            - "calendarApiTokens:/tokens/:rw"
+            - "./secrets/calendarListener/config.yml:/app/config.yml:ro"
+            - "./secrets/calendarListener/credentials.json:/app/credentials.json:ro"
+            # TODO: these files should be included during the build!
+            - "./workunit/workunit.py:/app/workunit.py:ro"
+            - "./heap/heap.py:/app/heap.py:ro"
+            - "./websocketClient/websocketClient.py:/app/websocketClient.py:ro"
+        build:
+            context: .
+            dockerfile: calendarListener/Dockerfile
+        restart: unless-stopped
+        logging: *loki-logging
+
+
+    calendar-listener-test:
+        build:
+            context: calendarListener
+            dockerfile: tests/Dockerfile
+
+
+    mongo:
+        image: mongo
+
+
+    mongo-express:
+        image: mongo-express
+        environment:
+            ME_CONFIG_BASICAUTH_USERNAME: ""
+            ME_CONFIG_MONGODB_URL: mongodb://mongo:27017/
+        ports:
+            - 8081:8081
+        depends_on:
+            - mongo
+
+
+    bitbucket:
+        build:
+            context: .
+            dockerfile: bitbucket/Dockerfile
+        volumes:
+            - "./secrets/bitbucket.yaml:/app/config.yml:ro"
+        depends_on:
+            - mongo
+        restart: unless-stopped
+        logging: *loki-logging
+
+    outlook-listener:
+        volumes:
+            - "outlookApiTokens:/tokens:rw"
+            - "./secrets/outlookListener/config.yml:/app/config.yml:ro"
+            - "./secrets/outlookListener/credentials.yaml:/app/credentials.yaml:ro"
+        build:
+            context: .
+            dockerfile: outlookListener/Dockerfile
+        restart: unless-stopped
+        logging: *loki-logging
+
+
+    nginx:
+        # Working on getting the ngxin docker container built with -vts.  Patch
+        # the nginx/mainline/debian/Dockerfile to clone the -vts git repo:
+        #        apt-get install -y git \
+        #     && cd /tmp \
+        #     && git clone https://github.com/vozlt/nginx-module-vts.git
+        #
+        # Remove --compile from `apt-get source`. After `apt-get source`, in
+        # $tempDir/nginx-1.25.3. There's probably a place to add
+        # `--add-module=/path/to/nginx-module-vts` to the `./configure`.
+        #
+        # I don't know how to build from that point.
+        image: nginx
+        volumes:
+            # Exposed so that manualSet.html can get a list of alerts
+            - "./ledController/config.yml:/usr/share/nginx/html/config.yml:ro"
+
+            - "./nginx/js-yaml.js:/usr/share/nginx/html/js-yaml.js:ro"
+            - "./nginx/manualSet.html:/usr/share/nginx/html/manualSet.html:ro"
+            - "./nginx/nginx-selfsigned.crt:/etc/nginx/nginx-selfsigned.crt:ro"
+            - "./nginx/nginx-selfsigned.key:/etc/nginx/nginx-selfsigned.key:ro"
+            - "./nginx/templates:/etc/nginx/templates:ro"
+        ports:
+            - 8080:8080
+            - 8443:8443
+        restart: unless-stopped
+        depends_on:
+            - bitbucket
+            - calendar-listener
+            - led-controller
+            - outlook-listener
+            - webhook
+        logging: *loki-logging
+
+
+    # TODO: rename webhook-listener?
+    webhook:
+        build:
+            context: .
+            dockerfile: webhook/Dockerfile
+        restart: unless-stopped
+        volumes:
+            - "./secret/webhook/config.yml:/app/config.yml"
+        healthcheck:
+            interval: 3s
+            test: ["CMD", "curl", "http://localhost:8080/health"]
+        logging: *loki-logging
+
+
+    alertmanager:
+        image: prom/alertmanager
+        ports:
+          - "9093:9093"
+        volumes:
+          - "./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro"
+        command: ["--log.level=debug", "--config.file=/etc/alertmanager/alertmanager.yml"]
+        logging: *loki-logging
+
+
+    prometheus:
+        image: prom/prometheus
+        ports:
+          - "9090:9090"
+        volumes:
+          - "./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro"
+          - "./prometheus/rules.yml:/etc/prometheus/rules.yml:ro"
+          - "prometheus-data:/prometheus:rw"
+        command: ["--log.level=debug", "--config.file=/etc/prometheus/prometheus.yml"]
+        restart: unless-stopped
+        logging: *loki-logging
+
+
+    # install the loki docker log driver with:
+    #   docker plugin install grafana/loki-docker-driver:2.9.1 --alias loki --grant-all-permissions
+    loki:
+        image: grafana/loki
+        ports:
+          - "3100:3100"
+        restart: unless-stopped
+        volumes:
+          - "loki-data:/loki:rw"
+          - "./loki/local-config.yaml:/etc/loki/local-config.yaml"
+        logging: *loki-logging
+
+
+    promtail:
+        image: grafana/promtail:2.3.0
+        volumes:
+          - "/var/lib/docker/containers:/var/lib/docker/containers:ro"
+          - "./promtail/promtail-config.yaml:/etc/promtail/promtail-config.yaml:ro"
+        command: -config.file=/etc/promtail/promtail-config.yaml
+        restart: unless-stopped
+        ports:
+          - "9080:9080"
+        logging: *loki-logging
+
+
+    grafana:
+        image: grafana/grafana
+        ports:
+          - "3000:3000"
+        restart: unless-stopped
+        volumes:
+          - grafana-data:/var/lib/grafana:rw
+        logging: *loki-logging
+
+
+    cadvisor:
+      image: gcr.io/cadvisor/cadvisor
+      restart: unless-stopped
+      privileged: true
+      volumes:
+        - /:/rootfs:ro
+        - /var/run:/var/run:rw
+        - /sys/fs/cgroup:/sys/fs/cgroup:rw
+        - /sys:/sys:ro
+        - /var/lib/docker/:/var/lib/docker:ro
+        - /var/run/docker.sock:/var/run/docker.sock:rw
+        - /dev/disk/:/dev/disk/:ro
+      ports:
+        - "7080:8080"
+      command:
+        - "/cadvisor"
+        - "--enable_load_reader=true"
+        - "-logtostderr"
+      # cadvisor healthcheck url /healthz
+      logging: *loki-logging
+
+
+volumes:
+    calendarApiTokens:
+    outlookApiTokens:
+    grafana-data:
+    loki-data:
+    prometheus-data:
+
