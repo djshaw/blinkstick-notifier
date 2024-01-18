@@ -37,20 +37,6 @@ services:
         command: ["python3", "webhookTest.py"]
 
 
-    # using detect-secrets to check for secrets and password:
-    # Create a baseline with
-    #     detect-secrets --baseline .secrets.baseline $( find . -name .svn -prune -or -type f -print )
-    #
-    # Audit what it found:
-    #     detect-secrets audit .secrets.baseline
-    #
-    # Then check for secrets with
-    #     detect-secrets-hook --baseline .secrets.baseling $( find . -name .svn -prune -or -type f -print )
-    #
-    # Problem: detect-secrets-hook fails with:
-    #     error: Unable to read baseline.
-
-
     led-controller:
         volumes:
             - "/dev/bus/usb:/dev/bus/usb:rw"
@@ -136,17 +122,6 @@ services:
 
 
     nginx:
-        # Working on getting the ngxin docker container built with -vts.  Patch
-        # the nginx/mainline/debian/Dockerfile to clone the -vts git repo:
-        #        apt-get install -y git \
-        #     && cd /tmp \
-        #     && git clone https://github.com/vozlt/nginx-module-vts.git
-        #
-        # Remove --compile from `apt-get source`. After `apt-get source`, in
-        # $tempDir/nginx-1.25.3. There's probably a place to add
-        # `--add-module=/path/to/nginx-module-vts` to the `./configure`.
-        #
-        # I don't know how to build from that point.
         image: nginx
         volumes:
             # Exposed so that manualSet.html can get a list of alerts
@@ -161,12 +136,6 @@ services:
             - 8080:8080
             - 8443:8443
         restart: unless-stopped
-        depends_on:
-            - bitbucket
-            - calendar-listener
-            - led-controller
-            - outlook-listener
-            - webhook
         logging: *loki-logging
 
 
