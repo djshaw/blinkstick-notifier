@@ -30,7 +30,7 @@ services:
             context: .
             dockerfile: webhook/Dockerfile
         volumes:
-            - "./webhook/config.yml:/app/config.yml:ro"
+            - "./secrets/webhook/config.yml:/app/config.yml:ro"
             - "./webhook/sampleMultiSetMessage.json:/app/sampleMultiSetMessage.json:ro"
             - "./webhook/sampleSetMessage.json:/app/sampleSetMessage.json:ro"
             - "./webhook/webhookTest.py:/app/webhookTest.py:ro"
@@ -146,7 +146,7 @@ services:
             dockerfile: webhook/Dockerfile
         restart: unless-stopped
         volumes:
-            - "./secret/webhook/config.yml:/app/config.yml"
+            - "./secrets/webhook/config.yml:/app/config.yml"
         healthcheck:
             interval: 3s
             test: ["CMD", "curl", "http://localhost:8080/health"]

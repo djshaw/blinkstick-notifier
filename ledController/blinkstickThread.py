@@ -178,7 +178,8 @@ class BlinkstickThread( threading.Thread ):
                 elif "unregister" in message:
                     for i in range( 0, 8 ):
                         for alert in list( currentAlerts[i].keys() ):
-                            if alert in currentAlerts[i]:
+                            if alert in currentAlerts[i] and \
+                               message["unregister"] in currentAlerts[i][alert]:
                                 currentAlerts[i][alert].remove( message["unregister"] )
                             if len( currentAlerts[i][alert] ) == 0:
                                 del currentAlerts[i][alert]

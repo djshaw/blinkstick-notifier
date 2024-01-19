@@ -89,6 +89,7 @@ class WebsocketClient( threading.Thread ):
                             for alert in self._state:
                                 # TODO: use the same sendMessage as below. Logging in the one below
                                 # isn't necessary duplicated here
+                                # TODO: validate against schema
                                 ws.send( json.dumps( { "enable": alert } ).encode( "ascii" ) )
 
                         openSem.release()
@@ -134,7 +135,7 @@ class WebsocketClient( threading.Thread ):
             while True:
                 # wait for a message
                 self._hasEvent.acquire()
-                
+
                 currentState = None
                 with self._stateMutex:
                     currentState = self._state.copy()
@@ -143,6 +144,7 @@ class WebsocketClient( threading.Thread ):
                 addedAlerts   = currentState - lastState
 
                 def sendMessage( message ):
+                    # TODO: validate message against schema
                     s = json.dumps( message )
                     _websocket.send( s.encode( "ascii" ) )
 

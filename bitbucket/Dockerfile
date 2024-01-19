@@ -10,7 +10,6 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 RUN mkdir /app
 
 COPY bitbucket/bitbucket.py \
-     bitbucket/schema.sql \
      heap/heap.py \
      workunit/workunit.py \
      web/navbar.py \

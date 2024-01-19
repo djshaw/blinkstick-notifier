@@ -7,6 +7,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
     --mount=target=/var/cache/apt,type=cache,sharing=locked \
     pip3 install blinkstick \
+                 jsonschema \
                  prometheus_client \
                  pyusb \
                  pyyaml \
@@ -25,6 +26,8 @@ COPY heap/heap.py \
      ledController/ledController.py \
      ledController/ledController.yml \
      ledController/ledControllerHealthCheck.py \
+     ledController/receive.schema.json \
+     ledController/send.schema.json \
      web/navbar.py \
      /app/
 

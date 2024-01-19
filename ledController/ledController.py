@@ -1,5 +1,6 @@
 import http
 import json
+import jsonschema
 import logging
 import os
 import signal
@@ -66,13 +67,34 @@ class WebSocketHandler( WebSocket ):
             self._blinkstickThread = blinkstickThread
             self._blinkstickClient = BlinkstickDTO( blinkstickThread, self.address )
 
+            with open( "/app/receive.schema.json" ) as f:
+                self._receiveSchema = json.load( f )
+
+            with open( "/app/send.schema.json" ) as f:
+                self._sendSchema = json.load( f )
+
         except Exception as e:
             logging.exception( e )
             raise e
 
 
+    def _validateMessage( self, schema, message ):
+        try:
+            # TODO: add an environment variable or commandline parameter to
+            # disable validation (in case it becomes a performance problem)
+            jsonschema.validate( schema=schema, instance=message )
+        except jsonschema.exceptions.ValidationError as e:
+            logging.error( "Error validating json: %s", e )
+        except jsonschema.exceptions.SchemaError as e:
+            logging.error( "Error validating schema: %s", e )
+
+
+    def send_message( self, message ):
+        self._validateMessage( self._sendSchema, message )
+        super().send_message( json.dumps( message ).encode( "ascii" ) )
+
     def _updateClientsGauges( self ):
-        """ Populates the clients{type=$NAME} prometheus metrics"""
+        """ Populates the clients{type=$NAME} prometheus metrics """
         global clients
 
         # This function isn't very efficient. There are much better ways to implement. Performance
@@ -87,25 +109,26 @@ class WebSocketHandler( WebSocket ):
     def handle( self ):
         try:
             data = json.loads( self.data )
+            self._validateMessage( self._receiveSchema, data )
 
             # {"ping": true} -> {"pong": true}
             if "ping" in data and data["ping"]:
                 logging.debug( "Ping!" )
-                self.send_message( json.dumps( {"pong": True} ).encode( "ascii" ) )
+                self.send_message( {"pong": True} )
                 return
 
             # {"enable": "type"} -> {"success": "true|false"}
             if "enable" in data:
                 logging.debug( "socket thread enabling " + data["enable"] )
                 self._blinkstickClient.enable( data["enable"] )
-                self.send_message( json.dumps( {"success": True } ).encode( "ascii" ) )
+                self.send_message( {"success": True } )
                 return
 
             # {"disable": "type"} -> {"success": "true|false"}
             if "disable" in data:
                 logging.debug( "socket thread disabling " + data["disable"] )
                 self._blinkstickClient.disable( data["disable"] )
-                self.send_message( json.dumps( {"success": True } ).encode( "ascii" ) )
+                self.send_message( {"success": True } )
                 return
 
             if "name" in data or "link" in data:

@@ -1,0 +1,31 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "messages sent to the led-controller",
+    "description": "json messages sent to and from the led-controller",
+    "definitions": {
+        "pong": {
+            "type": "object",
+            "properties": {
+                "pong": {
+                    "type": "boolean"
+                }
+            },
+            "required": ["pong"]
+        },
+        "success": {
+            "type": "object",
+            "properties": {
+                "success": {
+                    "type": "boolean"
+                }
+            },
+            "required": ["success"]
+        }
+    },
+    "type": "object",
+    "anyOf": [
+        { "$ref": "#/definitions/pong" },
+        { "$ref": "#/definitions/success" }
+    ]
+}
+

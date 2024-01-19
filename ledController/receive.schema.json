@@ -1,0 +1,53 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "messages sent to the led-controller",
+    "description": "json messages sent to and from the led-controller",
+    "definitions": {
+        "ping": {
+            "type": "object",
+            "properties": {
+                "ping": {
+                    "type": "boolean"
+                }
+            },
+            "required": ["ping"]
+        },
+        "enable": {
+            "type": "object",
+            "properties": {
+                "enable": {
+                    "type": "string"
+                }
+            },
+            "required": ["enable"]
+        },
+        "disable": {
+            "type": "object",
+            "properties": {
+                "disable": {
+                    "type": "string"
+                }
+            },
+            "required": ["disable"]
+        },
+        "handshake": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "link": {
+                    "type": "string"
+                }
+            },
+            "required": ["name"]
+        }
+    },
+    "type": "object",
+    "anyOf": [
+        { "$ref": "#/definitions/ping" },
+        { "$ref": "#/definitions/enable" },
+        { "$ref": "#/definitions/disable" },
+        { "$ref": "#/definitions/handshake" }
+    ]
+}
