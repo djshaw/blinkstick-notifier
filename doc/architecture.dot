@@ -1,0 +1,14 @@
+digraph G {
+    ledController [
+        label = "led-controller"
+    ];
+    webhook [
+        label = "sensor: webhook"
+    ];
+
+    sensor -> ledController;
+    prometheus -> alertmanager;
+    webhook -> ledController;
+    alertmanager -> webhook;
+    prometheus -> webhook;
+}

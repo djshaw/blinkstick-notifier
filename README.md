@@ -5,6 +5,20 @@ and illuminate specific leds with a specified colour when particular events
 occur.  Examines Google Calendar and Outlook for calendar events, and examines
 Bitbucket for build failures.
 
+## Architecture
+
+![image](doc/architecture.svg)
+
+All containers send logs to loki and metrics to prometheus.  The prometheus and
+alertmanager links to the webhook sensor have been added for emphasis.
+
+Each sensor has it's own links to outside services. For instance, the
+`calendarListener` interrogates the google calendar api for a list of
+calendar events.  Similarly, the `outlookListener` interrogates the microsoft
+graph api for a list of calendar events.  Both sensors send a message to the
+led-controller when a meeting is active.
+
+
 ## led-controller
 
 The led-controller is responsible for interacting with the blinkstick.  It
@@ -18,6 +32,10 @@ and a disable message to turn off a named condition.
 More than one sensor can enable the same named condition. When this happens,
 the controller will not disable the condition until all sensors have disabled
 the condition.
+
+Multiple conditions can be active at the same time.  Each condition has an
+explicitly (or automatically) set priority.  For each led, only one colour is
+activated.  The highest priority condition specifies the active colour.
 
 
 ## manual-set
