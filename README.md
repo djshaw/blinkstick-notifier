@@ -13,7 +13,7 @@ All containers send logs to loki and metrics to prometheus.  The prometheus and
 alertmanager links to the webhook sensor have been added for emphasis.
 
 Each sensor has it's own links to outside services. For instance, the
-`calendarListener` interrogates the google calendar api for a list of
+`[calendarListener](calendarListener/README.md)` interrogates the google calendar api for a list of
 calendar events.  Similarly, the `outlookListener` interrogates the microsoft
 graph api for a list of calendar events.  Both sensors send a message to the
 led-controller when a meeting is active.

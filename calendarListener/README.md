@@ -47,3 +47,10 @@ The contents of a `credentials.json` file looks like:
 }
 ```
 
+
+## Google API
+
+The calendar listener uses the `calendar.v3` api. Specifically the `calendar.v3.CalendarList.List` and `calendar.v3.Events.List` methods.  The google credentials must have these methods enabled.
+
+In the worst case, one `calendar.v3.Events.List` call is made for every calendar for every account every minute.
+
