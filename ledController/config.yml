@@ -13,7 +13,7 @@
   color: red
 - name: PersonalCalendarEvent
   channel: 1
-  color: bue
+  color: blue
 
 - name: DigitalEdCalendarError
   channel: 2

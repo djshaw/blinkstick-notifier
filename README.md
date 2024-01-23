@@ -5,6 +5,11 @@ and illuminate specific leds with a specified colour when particular events
 occur.  Examines Google Calendar and Outlook for calendar events, and examines
 Bitbucket for build failures.
 
+By giving critical events a physical presence, it's possible to turn off all
+notifications on your desktop.  It also gates notifications so that only high
+priority issues are presented to the user, preventing distractions and
+promoting focus.
+
 ## Architecture
 
 ![image](doc/architecture.svg)
@@ -37,10 +42,45 @@ Multiple conditions can be active at the same time.  Each condition has an
 explicitly (or automatically) set priority.  For each led, only one colour is
 activated.  The highest priority condition specifies the active colour.
 
+If the connection to sensor is lost, the state for that sensor is removed.
+
+
+## Sensors
+
+There are 3 different types of sensors:
+
+| Sensor             | Purpose |
+| -                  | -       |
+| `calendarListener` | Monitors google calendars for current events |
+| `outlookListener`  | Monitors outlook calendars for current events |
+| `bitbucket`        | Monitors bitbucket pipelines for failed builds |
+| `webhook`          | Listens for alerts raised by prometheus via alertmanager |
+
 
 ## manual-set
 
 The `nginx` container hosts `manualSet.html`, a debugging utility that allows
 a developer to enable any named condition.  They can disabled the named
 condition that they enabled.
+
+
+## Suggested Configuration
+
+Using too many leds risks not being able to distinguish between conditions.
+Grouping conditions with priorities allows a user to quickly decern which
+organization needs attention.
+
+For instance, dedicating the first led to unexpected Alert Manager alerts
+allows the user to quickly verify that the deployment is working correctly.
+
+Assigning the second led to personal events, and the third led to work events
+means that only the highest priority alert is coming through for the grouping.
+
+Alerts can be categorized to their importance (from highest to lowest):
+* Loss of refresh token or prometheus alert
+* A current calendar event (ostensibly a meeting)
+* Build failures
+
+Keeping the meaning of colours consistent also assists with quickly identifing
+issues.  Errors coloured red, calendar events blue, and build failurs purple.
 

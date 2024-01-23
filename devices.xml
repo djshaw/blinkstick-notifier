@@ -1,3 +1,5 @@
+<!-- The device specification for lxd/multipass for passing the blinkstick usb
+     device to the guest -->
   <hostdev mode='subsystem' type='usb' managed='yes'>
     <source>
       <vendor id='0x20a0'/>
