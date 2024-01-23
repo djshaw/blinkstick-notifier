@@ -10,3 +10,5 @@
 
     # Outlook client secret
     patterns = \"[a-zA-Z0-9\\.~_]{40}\"
+
+    allowed = "\"client_secret\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\""

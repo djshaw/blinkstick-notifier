@@ -30,16 +30,17 @@ services:
             context: .
             dockerfile: webhook/Dockerfile
         volumes:
-            - "./secrets/webhook/config.yml:/app/config.yml:ro"
-            - "./webhook/sampleMultiSetMessage.json:/app/sampleMultiSetMessage.json:ro"
-            - "./webhook/sampleSetMessage.json:/app/sampleSetMessage.json:ro"
-            - "./webhook/webhookTest.py:/app/webhookTest.py:ro"
+            - "./webhook/test/sampleMultiSetMessage.json:/app/sampleMultiSetMessage.json:ro"
+            - "./webhook/test/sampleSetMessage.json:/app/sampleSetMessage.json:ro"
+            - "./webhook/test/config.yml:/app/config.yml:ro"
+            - "./webhook/test/webhookTest.py:/app/webhookTest.py:ro"
         command: ["python3", "webhookTest.py"]
 
 
     led-controller:
         volumes:
             - "/dev/bus/usb:/dev/bus/usb:rw"
+            - "./secrets/ledController/config.yml:/app/config.yml:ro"
         privileged: true
         build:
             context: .
