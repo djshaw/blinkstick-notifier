@@ -66,7 +66,6 @@ class WebSocketHandler( WebSocket ):
             super().__init__( *args, *kwargs )
             self._blinkstickThread = blinkstickThread
             self._blinkstickClient = BlinkstickDTO( blinkstickThread, self.address )
-
             with open( "/app/receive.schema.json" ) as f:
                 self._receiveSchema = json.load( f )
 

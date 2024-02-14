@@ -34,7 +34,7 @@ scrape_configs:
   - regex:
       expression: (?P<level>(DEBUG)).*
       source: output
- 
+
   # TODO: this isn't parsing the time correctly
   - timestamp:
       format: RFC3339Nano

@@ -23,6 +23,4 @@ EOF
 #$LOG_CLI labels
 $LOG_CLI query '{level="DEBUG"}'
 
-
 docker-compose --project-name promtail_testing down --rmi all --volumes
-

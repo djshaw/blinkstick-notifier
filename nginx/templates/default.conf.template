@@ -14,8 +14,8 @@ server {
 
     location = /favicon.ico {
         access_log     off;
-        log_not_found     off;
-        try_files $uri     =204;
+        log_not_found  off;
+        try_files $uri =204;
     }
 
     location /ws/ {
@@ -26,17 +26,9 @@ server {
         proxy_set_header Host $host;
     }
 
-    location /outlookListener/ws/ {
-        proxy_pass http://outlook-listener:1011;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "Upgrade";
-        proxy_set_header Host $host;
-    }
-
     location /bitbucket {
         # TODO: rename bitbucketListener?
-        proxy_pass http://bitbucket:8080$request_uri;
+        proxy_pass http://bitbucket-listener:8080$request_uri;
         proxy_set_header Host $host;
     }
 
@@ -51,7 +43,7 @@ server {
     }
 
     location /webhook {
-        proxy_pass http://webhook:8080$request_uri;
+        proxy_pass http://webhook-listener:8080$request_uri;
         proxy_set_header Host $host;
     }
 
@@ -76,4 +68,3 @@ server {
         root /usr/share/nginx/html/;
     }
 }
-

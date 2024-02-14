@@ -1,11 +1,10 @@
 import logging
 import http
-from http import server
 
 logging.basicConfig( level=logging.DEBUG )
 
 class HTTPRequestHandler( http.server.BaseHTTPRequestHandler ):
-    def do_POST( self ):
+    def do_POST( self ): # pylint: disable=invalid-name
         try:
             logging.info("Have post!")
             content_len = int(self.headers.get('Content-Length'))
@@ -20,4 +19,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -1,0 +1,56 @@
+{
+    "receiver": "pager",
+    "status": "firing",
+    "alerts": [
+        {
+            "status": "firing",
+            "labels": {
+                "alertname": "credentialsInvalid",
+                "calendar": "john.doe@example.com",
+                "instance": "calendar-listener:9000",
+                "job": "everything",
+                "severity": "critical"
+            },
+            "annotations": {
+                "description": "calendar-listener:9000 of job everything is invalid",
+                "title": "Credentials john.doe@example.com are invalid"
+            },
+            "startsAt": "2023-12-01T14:51:25.412Z",
+            "endsAt": "0001-01-01T00:00:00Z",
+            "generatorURL": "http://a709a6e3e243:9090/graph?g0.expr=credentialsInvalid+%21%3D+0+or+credentailsExpired+%21%3D+0&g0.tab=1",
+            "fingerprint": "43e9456a99d32dc7"
+        },
+        {
+            "status": "firing",
+            "labels": {
+                "alertname": "credentialsInvalid",
+                "calendar": "john.doe@work.com",
+                "instance": "calendar-listener:9000",
+                "job": "everything",
+                "severity": "critical"
+            },
+            "annotations": {
+                "description": "calendar-listener:9000 of job everything is invalid",
+                "title": "Credentials john.doe@example.com are invalid"
+            },
+            "startsAt": "2023-12-01T14:51:25.412Z",
+            "endsAt": "0001-01-01T00:00:00Z",
+            "generatorURL": "http://a709a6e3e243:9090/graph?g0.expr=credentialsInvalid+%21%3D+0+or+credentailsExpired+%21%3D+0&g0.tab=1",
+            "fingerprint": "95568c6e4fb4e64f"
+        }
+    ],
+    "groupLabels": {
+        "alertname": "credentialsInvalid"
+    },
+    "commonLabels": {
+        "alertname": "credentialsInvalid",
+        "job": "everything",
+        "severity": "critical"
+    },
+    "commonAnnotations": {},
+    "externalURL": "http://7d64b06c9043:9093",
+    "version": "4",
+    "groupKey": "{}:{alertname=\"credentialsInvalid\"}",
+    "truncatedAlerts": 0
+}
+

@@ -1,0 +1,33 @@
+{
+    "display_name":"John Doe",
+    "links":{
+       "self":{
+          "href":"https://api.bitbucket.org/2.0/users/%7B8d552f62-7dab-44bd-b43f-80ada2963467%7D"
+       },
+       "avatar":{
+          "href":"https://secure.gravatar.com/avatar/71305a42dd481dc1d496d905d8c3437f?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FDS-0.png"
+       },
+       "repositories":{
+          "href":"https://api.bitbucket.org/2.0/repositories/%7B8d552f62-7dab-44bd-b43f-80ada2963467%7D"
+       },
+       "snippets":{
+          "href":"https://api.bitbucket.org/2.0/snippets/%7B8d552f62-7dab-44bd-b43f-80ada2963467%7D"
+       },
+       "html":{
+          "href":"https://bitbucket.org/%7B8d552f62-7dab-44bd-b43f-80ada2963467%7D/"
+       },
+       "hooks":{
+          "href":"https://api.bitbucket.org/2.0/workspaces/%7B8d552f62-7dab-44bd-b43f-80ada2963467%7D/hooks"
+       }
+    },
+    "created_on":"2023-02-02T16:29:25.088448+00:00",
+    "type":"user",
+    "uuid":"{8d552f62-7dab-44bd-b43f-80ada2963467}",
+    "has_2fa_enabled":null,
+    "username":"jdoe_workspace",
+    "is_staff":false,
+    "account_id":"63d97a0328cddcc707707b0a",
+    "nickname":"John Doe",
+    "account_status":"active",
+    "location":null
+ }

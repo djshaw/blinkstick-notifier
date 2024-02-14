@@ -1,0 +1,6 @@
+workspace: myworkspace
+user: jdoe
+token: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+notification: BitbucketBuildFailure
+pipelines:
+    - my-awesome-project

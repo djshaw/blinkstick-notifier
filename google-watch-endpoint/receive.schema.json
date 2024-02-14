@@ -1,0 +1,24 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "progress",
+    "description": "Progress on a workunit",
+    "type": "object",
+    "properties": {
+        "id": {
+            "description": "The unique id identifying the job. Opaque string. Typically a uuid",
+            "type": "string"
+        },
+        "created": {
+            "description": "The time the job was created",
+            "format": "date-time"
+        },
+        "status": {
+            "description": "The status of the job and all of the previous statuses of the job",
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/job-status"
+            }
+        }
+    },
+    "required": [ "id", "created", "status" ]
+}

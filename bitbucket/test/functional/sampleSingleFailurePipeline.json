@@ -1,0 +1,96 @@
+{
+  "page": 1,
+  "values": [
+      {
+          "uuid": "{aaaaaaaa-28d1-45c7-bb3f-94fc38efedef}",
+          "repository": {
+              "type": "repository",
+              "full_name": "myworkspace/my-awesome-project",
+              "links": {
+                  "self": {
+                      "href": "https://api.bitbucket.org/2.0/repositories/myworkspace/my-awesome-project"
+                  },
+                  "html": {
+                      "href": "https://bitbucket.org/myworkspace/my-awesome-project"
+                  },
+                  "avatar": {
+                      "href": "https://bytebucket.org/ravatar/%7Baaaaaaaa-f480-4b3c-9d1e-ce400bb57f1b%7D?ts=2015232"
+                  }
+              },
+              "name": "example",
+              "uuid": "{aaaaaaaa-f480-4b3c-9d1e-ce400bb57f1b}"
+          },
+          "state": {
+              "name": "COMPLETED",
+              "type": "pipeline_state_completed",
+              "result": {
+                  "name": "FAILED",
+                  "type": "pipeline_state_completed_failed"
+              }
+          },
+          "build_number": 1,
+          "creator": {
+              "display_name": "John Doe",
+              "links": {
+                  "self": {
+                      "href": "https://api.bitbucket.org/2.0/users/%7B9aaaaaaaa-108d-4e1e-9b5d-881ab2f97962%7D"
+                  },
+                  "avatar": {
+                      "href": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/aaaaaaaadde9722cac88e2c5/aaaaaaaa-ebc3-4782-a8d0-e0c2a3c98ca7/128"
+                  },
+                  "html": {
+                      "href": "https://bitbucket.org/%7Baaaaaaaa-108d-4e1e-9b5d-881ab2f97962%7D/"
+                  }
+              },
+              "type": "user",
+              "uuid": "{8d552f62-7dab-44bd-b43f-80ada2963467}",
+              "account_id": "aaaaaaaadde9722cac88e2c5",
+              "nickname": "John"
+          },
+          "created_on": "2024-02-02T19:08:12.114989Z",
+          "completed_on": "2024-02-02T19:17:17.288218Z",
+          "target": {
+              "ref_type": "branch",
+              "ref_name": "feature/the-next-new-thing",
+              "selector": {
+                  "type": "default"
+              },
+              "commit": {
+                  "hash": "aaaaaaaa0b3eba8e94024bd3a7cf1c12da21e342",
+                  "links": {
+                      "self": {
+                          "href": "https://api.bitbucket.org/2.0/repositories/myworkspace/my-awesome-project/commit/aaaaaaaa0b3eba8e94024bd3a7cf1c12da21e342"
+                      },
+                      "html": {
+                          "href": "https://bitbucket.org/myworkspace/myworkspace/my-awesome-project/aaaaaaaa0b3eba8e94024bd3a7cf1c12da21e342"
+                      }
+                  },
+                  "type": "commit"
+              },
+              "type": "pipeline_ref_target"
+          },
+          "trigger": {
+              "name": "PUSH",
+              "type": "pipeline_trigger_push"
+          },
+          "run_number": 1,
+          "duration_in_seconds": 10,
+          "build_seconds_used": 20,
+          "first_successful": false,
+          "expired": false,
+          "links": {
+              "self": {
+                  "href": "http://bitbucket-pipelines.prod.public.atl-paas.net//rest/1.0/accounts/{aaaaaaaa-f376-4c7b-b44e-c304f9bfdaf4}/repositories/{039df592-f480-4b3c-9d1e-ce400bb57f1b}/pipelines/{aaaaaaaa-28d1-45c7-bb3f-94fc38efedef}"
+              },
+              "steps": {
+                  "href": "http://bitbucket-pipelines.prod.public.atl-paas.net//rest/1.0/accounts/{aaaaaaaa-f376-4c7b-b44e-c304f9bfdaf4}/repositories/{039df592-f480-4b3c-9d1e-ce400bb57f1b}/pipelines/{aaaaaaaa-28d1-45c7-bb3f-94fc38efedef}/steps"
+              }
+          },
+          "has_variables": false,
+          "labels": {},
+          "type": "pipeline"
+      }
+  ],
+  "size": 21745,
+  "pagelen": 100
+}

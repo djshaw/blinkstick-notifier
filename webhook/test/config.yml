@@ -1,0 +1,9 @@
+defaultEvent: AlertManagerTest
+map:
+    credentialsInvalid:
+        - alert: PersonalCalendarError
+          label: calendar
+          value: john.doe@example.com
+        - alert: WorkCalendarError
+          label: calendar
+          value: john.doe@work.com

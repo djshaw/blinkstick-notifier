@@ -17,4 +17,3 @@ tests:
             exp_annotations:
                 summary: "Instance localhost:9001 is down"
                 description: "localhost:9001 of job prometheus has been down for more than 1 minute"
-

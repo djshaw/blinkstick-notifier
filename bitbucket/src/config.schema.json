@@ -1,0 +1,34 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "config.yml schema",
+    "description": "Schema for the bitbucket-listener config file",
+    
+    "type": "object",
+    "required": [],
+    "properties": {
+        "workspace": {
+            "type": "string",
+            "description": "The bitbucket workspace name"
+        },
+        "user": {
+            "type": "string",
+            "description": "The username to use when connecting to the bitbucket api"
+        },
+        "token": {
+            "type": "string",
+            "description": "The token provided by bitbucket, used when connecting to the bitbucket api"
+        },
+        "notification": {
+            "type": "string",
+            "description": "The event to send to the led-controller container when a failed pipeline is found"
+        },
+        "pipelines": {
+            "type": "array",
+            "description": "The pipelines to inspect",
+            "items": {
+                "type": "string"
+            }
+        }
+    }
+}
+

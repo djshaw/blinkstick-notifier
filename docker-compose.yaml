@@ -5,61 +5,31 @@ x-logging: &loki-logging
     options:
         tag: "{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}"
 
+x-python-version: &python-version
+    PYTHON_VERSION: 3.12
+
 services:
-    test-workunit:
-        build:
-            context: workunit
-        volumes:
-            - "./workunit/workunit.py:/app/workunit.py:ro"
-            - "./workunit/test.py:/app/test.py:ro"
-            - "./heap/heap.py:/app/heap.py:ro"
-        command: ["python3", "/app/test.py"]
-
-
-    test-websocketclient:
-        build:
-            context: websocketClient
-        volumes:
-            - "./websocketClient/websocketClient.py:/app/websocketClient.py:ro"
-            - "./websocketClient/test.py:/app/test.py:ro"
-        command: ["python3", "/app/test.py"]
-
-
-    test-webhook:
-        build:
-            context: .
-            dockerfile: webhook/Dockerfile
-        volumes:
-            - "./webhook/test/sampleMultiSetMessage.json:/app/sampleMultiSetMessage.json:ro"
-            - "./webhook/test/sampleSetMessage.json:/app/sampleSetMessage.json:ro"
-            - "./webhook/test/config.yml:/app/config.yml:ro"
-            - "./webhook/test/webhookTest.py:/app/webhookTest.py:ro"
-        command: ["python3", "webhookTest.py"]
-
-
     led-controller:
         volumes:
             - "/dev/bus/usb:/dev/bus/usb:rw"
             - "./secrets/ledController/config.yml:/app/config.yml:ro"
         privileged: true
+        env_file:
+            - .docker-compose.env
         build:
             context: .
-            dockerfile: ledController/Dockerfile
+            dockerfile: ledController/src/Dockerfile
+            args:
+                *python-version
         restart: unless-stopped
+        ports:
+            - "5678:5678" # Python debug port
         healthcheck:
             interval: 10s
             timeout: 20s
             retries: 3
         logging: *loki-logging
-
-
-    test-led-controller:
-        build:
-            context: .
-            dockerfile: ledController/Dockerfile
-        volumes:
-            - "./ledController/blinkstickThreadTest.py:/app/blinkstickThreadTest.py:ro"
-        command: ["python3", "/app/blinkstickThreadTest.py"]
+        command: ["python3", "ledController.py"]
 
 
     calendar-listener:
@@ -67,21 +37,72 @@ services:
             - "calendarApiTokens:/tokens/:rw"
             - "./secrets/calendarListener/config.yml:/app/config.yml:ro"
             - "./secrets/calendarListener/credentials.json:/app/credentials.json:ro"
-            # TODO: these files should be included during the build!
-            - "./workunit/workunit.py:/app/workunit.py:ro"
-            - "./heap/heap.py:/app/heap.py:ro"
-            - "./websocketClient/websocketClient.py:/app/websocketClient.py:ro"
+        env_file:
+            - .docker-compose.env
+        ports:
+            - "5679:5678" # Python debug port
         build:
             context: .
-            dockerfile: calendarListener/Dockerfile
+            dockerfile: calendarListener/src/Dockerfile
+            args:
+                *python-version
         restart: unless-stopped
         logging: *loki-logging
 
 
-    calendar-listener-test:
+    bitbucket-listener:
         build:
-            context: calendarListener
-            dockerfile: tests/Dockerfile
+            context: .
+            dockerfile: bitbucket/src/Dockerfile
+            args:
+                *python-version
+        volumes:
+            - "./secrets/bitbucket.yaml:/app/config.yml:ro"
+        env_file:
+            - .docker-compose.env
+        ports:
+            - "5680:5678" # Python debug port
+        depends_on:
+            - mongo
+        restart: unless-stopped
+        logging: *loki-logging
+
+
+    outlook-listener:
+        volumes:
+            - "outlookApiTokens:/tokens:rw"
+            - "./secrets/outlookListener/config.yml:/app/config.yml:ro"
+            - "./secrets/outlookListener/credentials.yaml:/app/credentials.yaml:ro"
+        env_file:
+            - .docker-compose.env
+        ports:
+            - "5681:5678" # Python debug port
+        build:
+            context: .
+            dockerfile: outlookListener/src/Dockerfile
+            args:
+                *python-version
+        restart: unless-stopped
+        logging: *loki-logging
+
+
+    webhook-listener:
+        build:
+            context: .
+            dockerfile: webhook/src/Dockerfile
+            args:
+                *python-version
+        restart: unless-stopped
+        volumes:
+            - "./secrets/webhook/config.yml:/app/config.yml"
+        env_file:
+            - .docker-compose.env
+        ports:
+            - "5682:5678" # Python debug port
+        healthcheck:
+            interval: 3s
+            test: ["CMD", "curl", "http://localhost:8080/health"]
+        logging: *loki-logging
 
 
     mongo:
@@ -99,29 +120,6 @@ services:
             - mongo
 
 
-    bitbucket:
-        build:
-            context: .
-            dockerfile: bitbucket/Dockerfile
-        volumes:
-            - "./secrets/bitbucket.yaml:/app/config.yml:ro"
-        depends_on:
-            - mongo
-        restart: unless-stopped
-        logging: *loki-logging
-
-    outlook-listener:
-        volumes:
-            - "outlookApiTokens:/tokens:rw"
-            - "./secrets/outlookListener/config.yml:/app/config.yml:ro"
-            - "./secrets/outlookListener/credentials.yaml:/app/credentials.yaml:ro"
-        build:
-            context: .
-            dockerfile: outlookListener/Dockerfile
-        restart: unless-stopped
-        logging: *loki-logging
-
-
     nginx:
         image: nginx
         volumes:
@@ -137,20 +135,12 @@ services:
             - 8080:8080
             - 8443:8443
         restart: unless-stopped
-        logging: *loki-logging
-
-
-    # TODO: rename webhook-listener?
-    webhook:
-        build:
-            context: .
-            dockerfile: webhook/Dockerfile
-        restart: unless-stopped
-        volumes:
-            - "./secrets/webhook/config.yml:/app/config.yml"
-        healthcheck:
-            interval: 3s
-            test: ["CMD", "curl", "http://localhost:8080/health"]
+        depends_on:
+            - bitbucket
+            - calendar-listener
+            - led-controller
+            - outlook-listener
+            - webhook
         logging: *loki-logging
 
 
@@ -240,4 +230,3 @@ volumes:
     grafana-data:
     loki-data:
     prometheus-data:
-
