@@ -2,13 +2,15 @@ from __future__ import print_function
 
 import datetime
 import http
+import http.server
 import logging
 import os
 import re
 import sys
 import threading
-from typing import override
+from typing import Type, override
 import urllib
+import urllib.parse
 import yaml
 
 from myblinkstick.navbar import Navbar
@@ -189,14 +191,14 @@ class CalendarListener( Sensor ):
         self._state = {}
 
     @override
-    def _get_httpd_handler(self) -> http.server.BaseHTTPRequestHandler:
+    def _get_httpd_handler(self) -> Type[http.server.SimpleHTTPRequestHandler]:
         def get_config():
             return self._config
         def get_tokens_map_lock():
             return self._tokens_map_lock
         def get_tokens_map():
             return self._tokens_map
-        class HTTPRequestHandler( http.server.BaseHTTPRequestHandler ):
+        class HTTPRequestHandler( http.server.SimpleHTTPRequestHandler ):
             def do_GET( self ): # pylint: disable=invalid-name
                 response = None
                 status = 500
@@ -301,6 +303,8 @@ class CalendarListener( Sensor ):
         result = super().main()
         if result != 0:
             return result
+        
+        assert self._workqueue is not None
         if self._config is not None:
             for calendar in self._config:
                 try:
@@ -339,6 +343,8 @@ class CalendarListener( Sensor ):
             # time.
 
         self._up.set(1)
+
+        assert self._terminate_semaphore is not None
         self._terminate_semaphore.acquire()
 
         # TODO: if the websocket never connects, it won't stop

@@ -175,9 +175,9 @@ class WebsocketClientTest( unittest.TestCase ):
             o = {}
 
             server.__exit__()
-            server.__enter__()
+            server.__enter__() # pylint: disable=unnecessary-dunder-call
 
-            sem.acquire(timeout=5)
+            sem.acquire(timeout=5) # python: disable=consider-using-with
 
             self.assertEqual( { 'enable': alert_name }, o )
 

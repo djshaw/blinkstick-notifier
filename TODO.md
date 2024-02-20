@@ -2,18 +2,18 @@
 
 No meaning should be taken from the order of these items.
 
-[ ] Fix use of config.schema.yaml
+[ ] Verify that ctrl-c is working
+[ ] Fix use of {receive,send}.schema.json
 [ ] Normalize container names from `CamleCase` to `kebab-case`
 [ ] Integrate markdown linting to verify links and images
-[ ] Integrate python linter
 [ ] Verify git secrets hooks working correctly
 [ ] Write an endpoint that receves webhook call backs for google calendar event
     changes, then forward the messages via websocket to `calendarListener`
-[ ] Rename `calendarListener` to `googleListener`
+[ ] Rename `calendarListener` to `google-listener`
 [ ] Normalize Listener to Sensor
 [ ] Add new email monitoring
 [ ] Poll less frequently.  Maybe once every 10 minutes. (Configurable, of course)
-[ ] Tone down `node_exporter` so it doesn't take up ass much cpu time
+[ ] Tone down `node_exporter`/`cadvisor` so it doesn't take up ass much cpu time
 [ ] Update `promtail-config.yaml` to identify info, warning, error, fatal (right
     now it only identifies debug)
 [ ] A unified and better mechanism for running tests

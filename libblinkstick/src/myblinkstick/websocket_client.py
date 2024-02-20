@@ -150,6 +150,7 @@ class WebsocketClient( threading.Thread ):
                 def send_message( message ):
                     # TODO: validate message against schema
                     s = json.dumps( message )
+                    assert self._websocket is not None
                     self._websocket.send( s.encode( "ascii" ) )
 
                 try:

@@ -1,18 +1,22 @@
+from abc import abstractmethod
 import datetime
+import logging
 import threading
 
-from typing import Iterable
+from typing import Iterable, override
 
 from prometheus_client.core import REGISTRY, GaugeMetricFamily
 from prometheus_client.metrics_core import Metric
+from prometheus_client.registry import Collector
 
 from myblinkstick.heap import HeapBy
 
-def installWorkunitsCollector( workqueue ):
-    class WorkunitsCollector( object ):
+def install_workunits_collector( workqueue ):
+    class WorkunitsCollector(Collector):
         def __init__( self, workqueue ):
             self._workqueue = workqueue
 
+        @override
         def collect( self ) -> Iterable[Metric]:
             # TODO: concurrent access to workunits?
             return [
@@ -26,13 +30,12 @@ def installWorkunitsCollector( workqueue ):
 
 
 class Workunit( object ):
-    dt = None
-
     def __init__( self, dt ):
         self.dt = dt
 
-    def Work( self ):
-        raise Exception( "Not implemented" )
+    @abstractmethod
+    def work( self ):
+        pass
 
 
 class WorkQueue( threading.Thread ):
@@ -43,7 +46,7 @@ class WorkQueue( threading.Thread ):
         self._event = threading.Event()
         super().__init__( *args, daemon=True, **kwargs )
 
-    def _waitForEvent( self ):
+    def _wait_for_event( self ):
         with self._lock:
             size = self._heap.size()
         if size == 0:
@@ -84,7 +87,7 @@ class WorkQueue( threading.Thread ):
     def run( self ):
         while not self._interrupted:
             try:
-                self._waitForEvent()
+                self._wait_for_event()
                 if self._interrupted:
                     return
 
@@ -93,7 +96,6 @@ class WorkQueue( threading.Thread ):
                 workunit.work()
 
             except Exception as e:
-                import logging
                 logging.exception( e )
 
 

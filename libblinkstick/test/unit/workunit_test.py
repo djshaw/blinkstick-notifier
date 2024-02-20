@@ -3,7 +3,7 @@ import threading
 import time
 import unittest
 
-import myblinkstick.workqueue as workqueue
+from myblinkstick import workqueue
 
 class LambdaWorkunit( workqueue.Workunit ):
     def __init__( self, dt, *args, **kwargs ):
@@ -174,8 +174,8 @@ class WorkQueueTest( unittest.TestCase ):
 
             queue.start()
 
-            old_work.sem.acquire()
-            new_work.sem.acquire()
+            old_work.sem.acquire() # pylint: disable=consider-using-with
+            new_work.sem.acquire() # pylint: disable=consider-using-with
 
             self.assertTrue(  old_work.fired )
             self.assertFalse( old_work.fail )

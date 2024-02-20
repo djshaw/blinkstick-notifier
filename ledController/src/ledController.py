@@ -1,6 +1,6 @@
 import argparse
 import http
-from http.server import BaseHTTPRequestHandler
+import http.server
 import json
 import logging
 import os
@@ -11,6 +11,7 @@ from typing import override
 
 import yaml
 import jsonschema
+import jsonschema.exceptions
 
 from blinkstickThread import BlinkstickThread, BlinkstickDTO
 from myblinkstick.navbar import Navbar
@@ -38,7 +39,7 @@ class WebSocketHandler( WebSocket ):
     def __init__( self,
                   blinkstick_thread: BlinkstickThread,
                   address,
-                  clients_lock: threading.Semaphore,
+                  clients_lock: threading.Lock,
                   clients,
                   *args,
                   **kwargs ):
@@ -106,7 +107,10 @@ class WebSocketHandler( WebSocket ):
 
     def handle( self ):
         try:
-            data = json.loads( self.data )
+            if isinstance(self.data, str):
+                data = json.loads( self.data )
+            else:
+                return
             self._validate_message( self._receive_schema, data )
 
             # {"ping": true} -> {"pong": true}
@@ -210,20 +214,22 @@ class LEDController( Application ):
         websocket_thread = threading.Thread( target=start_websocket_server_thread, daemon=True )
         websocket_thread.start()
 
-    def _get_httpd_handler(self) -> BaseHTTPRequestHandler:
+    @override
+    def _get_httpd_handler(self) -> type[http.server.SimpleHTTPRequestHandler]:
         blinkstick_thread = self._blinkstick_thread
         clients = self._clients
         clients_lock = self._clients_lock
         config = self._config
 
-        class HTTPRequestHandler( http.server.BaseHTTPRequestHandler ):
+        class HTTPRequestHandler( http.server.SimpleHTTPRequestHandler ):
+            @override
             def do_GET( self ): # pylint: disable=invalid-name
                 response = None
                 status = 500
                 headers = {}
 
                 try:
-                    current_alerts = None 
+                    current_alerts = None
                     visible_alerts = None
                     if blinkstick_thread is not None:
                         current_alerts = blinkstick_thread.get_current_alerts()
@@ -312,10 +318,11 @@ class LEDController( Application ):
                     if response is not None:
                         if isinstance( response, str ):
                             response = response.encode( "utf-8" )
-                        self.wfile.write( response )       
+                        self.wfile.write( response )
         return HTTPRequestHandler
 
-    def main(self):
+    @override
+    def main(self) -> int:
         result = super().main()
         if result != 0:
             return result
@@ -326,6 +333,7 @@ class LEDController( Application ):
 
         self._up.set(1)
 
+        assert self._terminate_semaphore is not None
         self._terminate_semaphore.acquire()
 
         return 0

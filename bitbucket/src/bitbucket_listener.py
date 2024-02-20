@@ -1,13 +1,13 @@
 import argparse
 import datetime
-from http.server import BaseHTTPRequestHandler
+from http.server import SimpleHTTPRequestHandler
 import logging
 import sys
 
-from typing import override
-import requests
-
+from typing import List, Type, override
+import pymongo
 from pymongo import MongoClient
+import requests
 
 from myblinkstick.navbar import Navbar
 from myblinkstick.workqueue import Workunit
@@ -72,7 +72,7 @@ class BitbucketDataAccess( object ):
         result = self._session.get( f"{self._base_url}/2.0/users/" + str( identifier ) )
         return UserDataAccess( result.json() )
 
-    def list_pipelines( self, repository: str ) -> [PipelineDataAccess]:
+    def list_pipelines( self, repository: str ) -> List[PipelineDataAccess]:
         result = []
         # TODO: query for more pages of pipelines
         # sort=-created_on :                               order by created, descending
@@ -117,8 +117,13 @@ class MongoDataAccess:
             # For testing: if a mongo instance isn't setup, at least press on
             logging.exception( e )
 
+    def has_database(self) -> bool:
+        return self._database is not None
+
     def server_status( self ):
-        return self._database.command("serverStatus")
+        assert self._database is not None
+        with pymongo.timeout(10):
+            return self._database.command("serverStatus")
 
     def set_key_value( self, key, value ):
         if self._database is not None:
@@ -134,7 +139,7 @@ class MongoDataAccess:
             self._database["users"].update_one( { "_id": user_data_access.get_uuid() },
                                                 { "$set": user_data_access.json() }, upsert=True )
 
-    def get_user( self, uuid ) -> UserDataAccess:
+    def get_user( self, uuid ) -> UserDataAccess | None:
         if self._database is not None:
             user = self._database["users"].find( { "_id": uuid } )
             if user is None:
@@ -144,7 +149,7 @@ class MongoDataAccess:
         else:
             return None
 
-    def get_current_user( self ) -> UserDataAccess:
+    def get_current_user( self ) -> UserDataAccess | None:
         if self._database is not None:
             current_user_uuid = self._database["properties"].find({"_id": "currentUser"})
             uuid = current_user_uuid[0]["currentUser"] # pylint: disable=unsubscriptable-object
@@ -265,12 +270,12 @@ class BitbucketSensor( Sensor ):
         return parser
 
     @override
-    def _get_httpd_handler( self ) -> BaseHTTPRequestHandler:
+    def _get_httpd_handler( self ) -> Type[SimpleHTTPRequestHandler]:
         def get_build_failure_manager():
             return self._build_failure_manager
         http_path_prefix = self._http_path_prefix
 
-        class HTTPRequestHandler( BaseHTTPRequestHandler ):
+        class HTTPRequestHandler( SimpleHTTPRequestHandler ):
             def do_GET( self ): # pylint: disable=invalid-name
                 response = None
                 status = 500
@@ -278,6 +283,7 @@ class BitbucketSensor( Sensor ):
 
                 try:
                     if self.path.startswith( http_path_prefix ):
+                        status = 200
                         response = """
                             <html>
                                 <head>
@@ -352,6 +358,7 @@ class BitbucketSensor( Sensor ):
             return 1
         self._mongo_data_access.set_current_user( current_user )
 
+        assert self._workqueue is not None
         for pipeline in self._config["pipelines"]:
             # TODO: make period configurable
             self._workqueue.enqueue(
@@ -365,6 +372,7 @@ class BitbucketSensor( Sensor ):
                     pipeline ) )
 
         self._up.set(1)
+        assert self._terminate_semaphore is not None
         self._terminate_semaphore.acquire()
 
         self._workqueue.stop()
