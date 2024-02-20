@@ -3,8 +3,10 @@ import unittest
 import logging
 import threading
 import http
+import http.server
 from http.server import BaseHTTPRequestHandler
 from functools import partial
+import requests
 
 from simple_websocket_server import WebSocketServer, WebSocket
 
@@ -20,9 +22,10 @@ class WebSocketHandler( WebSocket ):
 
     def handle( self ):
         try:
-            data = json.loads(self.data)
-            if self._callback is not None and "enable" in data:
-                self._callback(data)
+            if isinstance(self.data, str):
+                data = json.loads(self.data)
+                if self._callback is not None and "enable" in data:
+                    self._callback(data)
         except Exception as e:
             logging.exception(e)
 
@@ -92,10 +95,15 @@ class FunctionalTest( unittest.TestCase ):
         httpd.start()
 
         with managed_mongo() as mongo:
-            with managed_bitbucket(config_file="/workspaces/blinkstick-notifier/bitbucket/test/functional/config.yml",
+            with managed_bitbucket(config_file="bitbucket/test/functional/config.yml",
                                    led_controller_url=f"ws://127.0.0.1:{ws_port}",
                                    bitbucket_port=bitbucket_port,
-                                   mongo_port=mongo.mongo_port):
-                message_sem.acquire()
+                                   mongo_port=mongo.mongo_port) as bitbucket:
+                message_sem.acquire(timeout=10)
 
                 self.assertEqual({"enable": "BitbucketBuildFailure"}, message)
+                # TODO: Do I need to set the log level on requests to get this message?
+                bitbucket.assert_log(".*\\\"GET /2\\.0/user HTTP\\/1\\.1\\\" 200.*")
+
+                response = requests.get(f"http://127.0.0.1:{bitbucket.http_port}/bitbucket", timeout=10)
+                self.assertEqual(200, response.status_code)

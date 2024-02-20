@@ -50,7 +50,7 @@ class BlinkstickThread( threading.Thread ):
     def terminate( self ):
         self.enqueue( { "terminate": True } )
 
-
+    # TODO: move to DTO
     def get_visible_alerts( self ):
         # TODO: wait for a reply. We can't just inspect the value: we need to
         # wait for our messages to be parsed
@@ -60,7 +60,7 @@ class BlinkstickThread( threading.Thread ):
         self.enqueue( message )
         return reply_queue.get()
 
-
+    # TODO: move to DTO
     def get_current_alerts( self ):
         reply_queue = queue.Queue()
         message = { "replyQueue":        reply_queue,

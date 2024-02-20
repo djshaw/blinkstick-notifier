@@ -1,8 +1,9 @@
 import http
-from http.server import BaseHTTPRequestHandler
+import http.server
 import json
 import logging
 import sys
+from typing import Type, override
 import yaml
 
 from myblinkstick.navbar import Navbar
@@ -30,26 +31,24 @@ def get_blinkstick_alert_for_prometheus_alert(config, alert ):
     return None
 
 
-class HttpdWsCourier:
-    ws = None
-
-
 class WebhookListener( Sensor ):
     def __init__(self, args):
         super().__init__(args, "Webhook Listener", "/webhook")
         self._alerts = {}
-        self._ws_courier = HttpdWsCourier()
 
-    def _get_httpd_handler(self) -> BaseHTTPRequestHandler:
+    @override
+    def _get_httpd_handler(self) -> Type[http.server.SimpleHTTPRequestHandler]:
         alerts = self._alerts
         http_path_prefix = self._http_path_prefix
         config = self._config
-        ws_courier = self._ws_courier
+        def get_ws():
+            return self._ws
 
-        class HTTPRequestHandler( http.server.BaseHTTPRequestHandler ):
+        class HTTPRequestHandler( http.server.SimpleHTTPRequestHandler ):
             # TODO: do I need to watch for an alertmanager restart to clear alerts? I
             # think we can periodically check the alertmanager_cluster_peer_info{peer=""}
             # to see if we've lost an alert manager
+            @override
             def do_GET( self ): # pylint: disable=invalid-name
                 response = None
                 status = 500
@@ -145,8 +144,9 @@ class WebhookListener( Sensor ):
                                 alerts[blinkstick_alert].add( alert["labels"]["alertname"] )
                             else:
                                 alerts[blinkstick_alert] = set( (alert["labels"]["alertname"],) )
-                                if ws_courier.ws is not None:
-                                    ws_courier.ws.enable( blinkstick_alert )
+                                ws = get_ws()
+                                if ws is not None:
+                                    ws.enable( blinkstick_alert )
                                 else:
                                     logging.error("wsCourier.ws is None!")
 
@@ -155,8 +155,9 @@ class WebhookListener( Sensor ):
                                 alerts[blinkstick_alert].remove( alert["labels"]["alertname"] )
                                 if len( alerts[blinkstick_alert] ) == 0:
                                     del alerts[blinkstick_alert]
-                                    if ws_courier.ws is not None:
-                                        ws_courier.ws.disable( blinkstick_alert )
+                                    ws = get_ws()
+                                    if ws is not None:
+                                        ws.disable( blinkstick_alert )
                                     else:
                                         logging.error("wsCourier.ws is None!")
 
@@ -181,11 +182,10 @@ class WebhookListener( Sensor ):
         result = super().main()
         if result != 0:
             return result
-        # The httpd server is started before the websocket, but the httpd server needs the
-        # websocket to send enabled messages to the controller.  Use a courier to backfil the
-        # websocket client connection.
-        self._ws_courier.ws = self._ws
+
         self._up.set(1)
+
+        assert self._terminate_semaphore is not None
         self._terminate_semaphore.acquire()
 
         return 0

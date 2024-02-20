@@ -1,20 +1,25 @@
+from abc import abstractmethod
 import argparse
+import inspect
 import logging
+import sys
 import threading
 import signal
 import json
 import os
 import http
-from http.server import BaseHTTPRequestHandler
+import http.server
 
-from typing import Iterable
+from typing import Iterable, override
 
 import jsonschema
+import jsonschema.exceptions
 import yaml
 
 from myblinkstick.websocket_client import WebsocketClient
-from myblinkstick.workqueue import WorkQueue, installWorkunitsCollector
+from myblinkstick.workqueue import WorkQueue, install_workunits_collector
 
+from prometheus_client.registry import Collector
 from prometheus_client.core import GaugeMetricFamily, REGISTRY
 from prometheus_client.metrics_core import Metric
 from prometheus_client import start_http_server, Gauge
@@ -25,13 +30,19 @@ class Application:
     def __init__( self, args ):
         self._args = args
         self._parsed_args = self.get_arg_parser().parse_args(self._args[1:])
-        self._config = self._get_config(config_filename=self._parsed_args.config_file)
+        self.setup_logging()
+
+        config_schema = \
+            os.path.join(
+                os.path.dirname(inspect.getfile(self.__class__)),
+                "config.schema.json")
+        self._config = self._get_config(config_filename=self._parsed_args.config_file,
+                                        schema_filename=config_schema)
         self._up = Gauge(
             'up',
             'Whether or not the ledController is running' )
         self._up.set( 0 )
         self._terminate_semaphore = None
-        self.setup_logging()
 
     def start_prometheus( self ):
         start_http_server( int( self._parsed_args.prometheus_port ) )
@@ -104,7 +115,8 @@ class Application:
         pass
 
     def setup_collector(self):
-        class CustomCollector:
+        class CustomCollector(Collector):
+            @override
             def collect( self ) -> Iterable[Metric]:
                 return [
                     GaugeMetricFamily(
@@ -112,43 +124,63 @@ class Application:
                         'The number of threads reported by python\'s threading.active_count()',
                         value=threading.active_count())]
 
-        REGISTRY.register( CustomCollector() )
+        REGISTRY.register(CustomCollector())
 
     def setup_logging(self):
-        logging.basicConfig( level=logging.getLevelName(os.environ.get('DEFAULT_LOG_LEVEL', 'info').upper()) )
+        def set_log_level_from_environment(logger: str, envvar: str | None= None):
+            if envvar is None:
+                envvar = f"{logger.upper()}_LOG_LEVEL"
+            default_level = os.environ.get(envvar, 'info').upper()
+            level = logging.getLevelName(default_level)
+            if isinstance(level, int):
+                logging.getLogger(logger).setLevel(level=level)
+            else:
+                logging.warning("Unexpected log level `%s` for `%s`", logger, envvar)
+
+        default_level = os.environ.get('DEFAULT_LOG_LEVEL', 'info').upper()
+        if isinstance(logging.getLevelName(default_level), int):
+            print(f"setting default logging to {default_level}")
+            logging.basicConfig(level=logging.getLevelName(default_level))
+
+        set_log_level_from_environment("requests.packages.urllib3", "REQUESTS_LOG_LEVEL")
 
         for key in \
-            filter( lambda x: x.endswith( '_LOG_LEVEL' ) and x != 'DEFAULT_LOG_LEVEL', 
+            filter( lambda x: x.endswith( '_LOG_LEVEL' ) and x != 'DEFAULT_LOG_LEVEL',
                     os.environ ):
+
             if not isinstance(logging.getLevelName(os.environ[key].upper()), int):
                 continue
-            logging.getLogger(key.replace('_LOG_LEVEL$', '')).setLevel(
-                level=logging.getLevelName(os.environ[key].upper()))
+
+            # TODO: implement the logging challengs
+            if key.lower() in ["bitbucket", "google", "outlook"]:
+                logging.getLogger(key.replace('_LOG_LEVEL$', '')).setLevel(
+                    level=logging.getLevelName(os.environ[key].upper()))
 
         # Remove the default logger. It allows log messages to contain a new line
-        logging.getLogger('').handlers = []
+        logging.getLogger().handlers = []
 
         class LogFormatter( logging.Formatter ):
             def __init__( self, fmt=None, datefmt=None ):
                 super().__init__( fmt=fmt, datefmt=datefmt )
                 self.string_formatter = logging.Formatter( "%(levelname)s:%(name)s:%(message)s" )
 
-            def format( self, record ):
+            @override
+            def format( self, record ) -> str:
                 return self.string_formatter.format( record ).replace( "\n", "\\n" )
-        handler = logging.StreamHandler()
-        handler.setFormatter( LogFormatter() )
-        logging.getLogger('').addHandler( handler )
+        handler = logging.StreamHandler(stream=sys.stdout)
+        handler.setFormatter(LogFormatter())
+        logging.getLogger().addHandler(handler)
 
         def custom_hook( args ):
             logging.exception( args )
         threading.excepthook = custom_hook
 
-    def _get_httpd_handler(self) -> BaseHTTPRequestHandler:
-        raise Exception('Not implemented')
+    @abstractmethod
+    def _get_httpd_handler(self) -> type[http.server.SimpleHTTPRequestHandler]:
+        pass
 
     def start_http_server(self):
         def httpd_service():
-            # TODO: make port configurable
             httpd = http.server.HTTPServer( ('', int(self._parsed_args.http_port)), self._get_httpd_handler() )
             httpd.serve_forever()
         httpd = threading.Thread( daemon=True, target=httpd_service )
@@ -170,16 +202,19 @@ class Sensor( Application ):
         self._ws = None
         self._workqueue = None
 
-    def get_arg_parser(self):
+    @abstractmethod
+    @override
+    def _get_httpd_handler(self) -> type[http.server.SimpleHTTPRequestHandler]:
+        pass
+
+    @override
+    def get_arg_parser(self) -> argparse.ArgumentParser:
         parser = super().get_arg_parser()
         parser.add_argument('--led-controller-url',
                             help='The url of the led-controller',
                             default='ws://led-controller:9099/', # TODO: use a url object
                             dest='led_controller_url')
         return parser
-
-    def get_http_handler( self ):
-        raise Exception('Not implemented')
 
     def get_http_path_prefix( self ):
         return self._http_path_prefix
@@ -194,9 +229,10 @@ class Sensor( Application ):
 
     def start_work_queue(self):
         self._workqueue = WorkQueue()
-        installWorkunitsCollector( self._workqueue )
+        install_workunits_collector( self._workqueue )
         self._workqueue.start()
 
+    @override
     def main(self) -> int:
         result = super().main()
         if result != 0:

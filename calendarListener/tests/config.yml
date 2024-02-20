@@ -1,0 +1,2 @@
+- name: john.doe@example.com
+  notification: PersonalCalendarEvent

@@ -2,12 +2,14 @@ import argparse
 import atexit
 import datetime
 import http
+import http.server
 import json
 import logging
 import os
 import sys
 import threading
 import urllib
+import urllib.parse
 import uuid
 from typing import override
 
@@ -190,21 +192,33 @@ class OutlookListener( Sensor ):
 
                     if "code" in query and \
                     "session_state" in query:
+                        credentials = get_credentials()
+                        assert credentials is not None
+
+                        app = get_app()
+                        assert app is not None
+
                         code = query["code"][0]
-                        get_app().acquire_token_by_authorization_code(
+                        app.acquire_token_by_authorization_code(
                             code,
-                            scopes=get_credentials()["scope"],
-                            redirect_uri=get_credentials()["redirect_uri"] )
+                            scopes=credentials["scope"],
+                            redirect_uri=credentials["redirect_uri"] )
                         status = 307
                         headers["Location"] = "/" if http_path_prefix == "" else http_path_prefix
                         save_tokens_cache()
 
                     elif self.path.startswith( http_path_prefix + "/flow?" ):
+                        credentials = get_credentials()
+                        assert credentials is not None
+
+                        app = get_app()
+                        assert app is not None
+
                         auth_state = str(uuid.uuid4())
-                        authorization_url = get_app().get_authorization_request_url(
-                            get_credentials()['scope'],
+                        authorization_url = app.get_authorization_request_url(
+                            credentials['scope'],
                             state=auth_state,
-                            redirect_uri=get_credentials()['redirect_uri'] )
+                            redirect_uri=credentials['redirect_uri'] )
                         save_tokens_cache()
                         status = 307
                         headers = {"Location": authorization_url}
@@ -232,7 +246,9 @@ class OutlookListener( Sensor ):
                         for calendar in config:
                             valid = False
                             if get_tokens_cache() is not None:
-                                authorization_token = get_app().get_accounts( calendar["name"] )
+                                app = get_app()
+                                if app is not None:
+                                    authorization_token = app.get_accounts( calendar["name"] )
                             if authorization_token is not None and len(authorization_token) != 0:
                                 valid = True
 
@@ -250,8 +266,8 @@ class OutlookListener( Sensor ):
                                     <h3>Configuration</h3>
                                     <pre class="bg-light">"""
                         response += yaml.dump( config,
-                                            sort_keys=True,
-                                            indent=2 )
+                                               sort_keys=True,
+                                               indent=2 )
                         response += """</pre>
                                 </body>
                             </html>
@@ -291,12 +307,16 @@ class OutlookListener( Sensor ):
         return parser
 
     def save_tokens_cache(self):
-        if self._tokens_cache.has_state_changed:
-            with open( self._tokens_file, "w", encoding="ascii" ) as f:
+        if self._tokens_file is not None and \
+           self._tokens_cache is not None and \
+           self._tokens_cache.has_state_changed:
+            with open( self._tokens_file, encoding="ascii" ) as f:
                 f.write( self._tokens_cache.serialize() )
 
     def main(self):
-        super().main()
+        result: int = super().main()
+        if result != 0:
+            return result
 
         with open(self._parsed_args.credentials_file, encoding='ascii') as f:
             self._credentials = yaml.safe_load( f )
@@ -305,14 +325,14 @@ class OutlookListener( Sensor ):
         self._tokens_cache = msal.SerializableTokenCache()
         if os.path.exists( self._tokens_file ):
             self._tokens_cache.deserialize( open( self._tokens_file, "r", encoding="ascii" ).read() )
-            atexit.register( self.save_tokens_cache )
+        atexit.register( self.save_tokens_cache )
 
         self._app = msal.ConfidentialClientApplication(
                 client_id=self._credentials["client_id"],
                 authority=self._credentials["authority"],
-                client_credential=self._credentials["client_secret"],
-                token_cache=self._tokens_cache )
+                client_credential=self._credentials["client_secret"])
 
+        assert self._workqueue is not None
         for calendar in self._config:
             workunitExceptions.labels( calendar["name"], 'Exception' ).set( 0 )
 
@@ -331,6 +351,8 @@ class OutlookListener( Sensor ):
                     self._credentials ) )
 
         self._up.set(1)
+
+        assert self._terminate_semaphore is not None
         self._terminate_semaphore.acquire()
 
         return 0

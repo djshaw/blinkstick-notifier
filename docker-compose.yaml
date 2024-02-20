@@ -124,7 +124,7 @@ services:
         image: nginx
         volumes:
             # Exposed so that manualSet.html can get a list of alerts
-            - "./ledController/config.yml:/usr/share/nginx/html/config.yml:ro"
+            - "./secrets/ledController/config.yml:/usr/share/nginx/html/config.yml:ro"
 
             - "./nginx/js-yaml.js:/usr/share/nginx/html/js-yaml.js:ro"
             - "./nginx/manualSet.html:/usr/share/nginx/html/manualSet.html:ro"
@@ -136,11 +136,11 @@ services:
             - 8443:8443
         restart: unless-stopped
         depends_on:
-            - bitbucket
+            - bitbucket-listener
             - calendar-listener
             - led-controller
             - outlook-listener
-            - webhook
+            - webhook-listener
         logging: *loki-logging
 
 

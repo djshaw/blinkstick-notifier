@@ -19,19 +19,17 @@ def on_open( ws ):
 
 pongSem = threading.Semaphore( 0 )
 resultValue = 1
-def on_message( ws, data ):
+def on_message( ws: websocket.WebSocket, data ) -> None:
     global resultValue
     logging.info( "exiting resultvalue: %s", str( resultValue ) )
     try:
         if data is None:
             logging.error("no data")
-            return 1
 
         data = data.decode( "ascii" )
         data = json.loads( data )
         if "pong" not in data or not data["pong"]:
             logging.error( "no pong" )
-            return 1
 
         else:
             resultValue = 0
@@ -43,6 +41,7 @@ def on_message( ws, data ):
 def on_close( ws, close_status_code, close_message ):
     logging.info("on_close: %s %s", str( close_status_code ), str( close_message ) )
 
+# TODO: Remove!
 have_error = False
 def on_error( ws, error ):
     global have_error
