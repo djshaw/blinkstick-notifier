@@ -9,7 +9,7 @@ scrape_configs:
       - targets:
         - "172.17.0.1:9323"
         - "alertmanager:9093"
-        - "bitbucket:9000"
+        - "bitbucket-listener:9000"
         - "calendar-listener:9000"
         - "cadvisor:8080"
         - "grafana:3000"

@@ -25,7 +25,7 @@ clients_gauge = Gauge(
         'clients',
         'Specifies which clients are connected',
         ['type'] )
-client_types = set(['CalendarListener', 'OutlookListener', 'Webhook', 'Bitbucket', 'ManualSet', None])
+client_types = set(['Calendar Listener', 'Outlook Listener', 'Webhook Listener', 'Bitbucket Listener', 'ManualSet', None])
 for client in client_types:
     clients_gauge.labels( client ).set( 0 )
 

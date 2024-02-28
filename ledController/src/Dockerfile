@@ -11,7 +11,6 @@ COPY ledController/src/requirements.txt requirements.txt
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip3 install -r requirements.txt
 
-COPY ledController/src/ /app
 RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
     --mount=target=/var/cache/apt,type=cache,sharing=locked \
      apt update \
@@ -23,7 +22,7 @@ ENV PYTHONPATH=/app
 
 CMD python ledController/ledController.py
 
-HEALTHCHECK CMD python ledControllerHealthCheck.py
+HEALTHCHECK CMD python ledController/ledControllerHealthCheck.py
 
 
 FROM release AS debug

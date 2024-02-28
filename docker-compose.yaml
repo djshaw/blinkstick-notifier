@@ -29,7 +29,6 @@ services:
             timeout: 20s
             retries: 3
         logging: *loki-logging
-        command: ["python3", "ledController.py"]
 
 
     calendar-listener:
@@ -94,7 +93,7 @@ services:
                 *python-version
         restart: unless-stopped
         volumes:
-            - "./secrets/webhook/config.yml:/app/config.yml"
+            - "./secrets/webhook/config.yml:/app/config.yml:ro"
         env_file:
             - .docker-compose.env
         ports:
