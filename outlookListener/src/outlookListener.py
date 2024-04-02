@@ -11,7 +11,7 @@ import threading
 import urllib
 import urllib.parse
 import uuid
-from typing import override
+from typing import TypedDict, override
 
 import msal
 import requests
@@ -28,6 +28,7 @@ credentialsInvalid = Gauge(
         'credentialsInvalid',
         'Indicates whether or not the credentials are invalid',
         ['calendar'] )
+# TODO: credentialsExpired isn't used.  It's a hold over from calendar-listener.
 credentialsExpired = Gauge(
         'credentialsExpired',
         'Indicates whether or not the credentials are expired',
@@ -36,6 +37,19 @@ workunitExceptions = Gauge(
         'workunitExceptions',
         'The number of exceptions caused by work units for a particular calendar',
         ['calendar', 'exceptionName'] )
+
+def log_api_response(result):
+    if "error" in result:
+        # Client secrets apparently need to be rotated:
+        # invalid_client: AADSTS7000222: The provided client secret keys for app '...' are expired.
+        # Visit the Azure portal to create new keys for your app: https://aka.ms/NewClientSecret,
+        # or consider using certificate credentials for added security: https://aka.ms/certCreds.
+
+        # TODO: find a way to determine when the client credentials are about to expire, and raise
+        #       an event specific to the condition
+        logging.error(result["error"] + ": " + result["error_description"])
+    else:
+        logging.info(result)
 
 class OutlookWorkunit( Workunit ):
     def __init__( self,
@@ -58,7 +72,11 @@ class OutlookWorkunit( Workunit ):
         self._app = app
         self._credentials = credentials
 
-    def poll_calendar( self, calendar ):
+    class CalendarDict(TypedDict):
+        name: str
+        notification: str
+
+    def poll_calendar( self, calendar: CalendarDict ):
         result = []
 
         if self._tokens_cache is not None:
@@ -76,14 +94,23 @@ class OutlookWorkunit( Workunit ):
 
             authorization_token = None
 
-            acquire_result = self._app.acquire_token_silent_with_error(self._credentials["scope"], account[0], force_refresh=True)
+            acquire_result = self._app.acquire_token_silent_with_error(
+                self._credentials["scope"], account[0], force_refresh=True)
             # TODO: could I listen to the msal.token_cache event, and look for an
             # `expires_in` < 1000 (or `ext_expires_in` < 1000?)
 
             # TODO: The expires_in value seems to float around. I would expect that
             # the force_refresh would lock it to some externally specified maximum
             if "error" in acquire_result:
-                raise Exception(acquire_result["error"])
+                if acquire_result["error"] == "invalid_client":
+                    log_api_response(acquire_result)
+
+                    # TODO: the client itself is invalid, not necessarily the account.  Removing
+                    # the account from here and setting the account credentials invalid was the
+                    # fastest way for an alert to be generated.
+                    self._app.remove_account( calendar["name"] )
+                else:
+                    raise Exception(acquire_result["error"] + " " + acquire_result["error_description"])
 
             authorization_token = acquire_result["access_token"]
 
@@ -191,7 +218,7 @@ class OutlookListener( Sensor ):
                     query = urllib.parse.parse_qs( parse.query )
 
                     if "code" in query and \
-                    "session_state" in query:
+                       "session_state" in query:
                         credentials = get_credentials()
                         assert credentials is not None
 
@@ -199,10 +226,12 @@ class OutlookListener( Sensor ):
                         assert app is not None
 
                         code = query["code"][0]
-                        app.acquire_token_by_authorization_code(
+                        access_token = app.acquire_token_by_authorization_code(
                             code,
                             scopes=credentials["scope"],
                             redirect_uri=credentials["redirect_uri"] )
+                        if "error" in access_token:
+                            log_api_response(access_token)
                         status = 307
                         headers["Location"] = "/" if http_path_prefix == "" else http_path_prefix
                         save_tokens_cache()
@@ -243,7 +272,7 @@ class OutlookListener( Sensor ):
                                     <table class="table">
                                         <tbody>"""
 
-                        for calendar in config:
+                        for calendar in config['calendars']:
                             valid = False
                             if get_tokens_cache() is not None:
                                 app = get_app()
@@ -256,7 +285,8 @@ class OutlookListener( Sensor ):
                             # TODO: there may be more to check: this reports valid even
                             # though get_accounts() is returning an empty list.
                             response += "<td>(" + ("not " if not valid else "") + "valid)</td>"
-                            response += "<td><a href='" + http_path_prefix + "/flow?" + calendar["name"] + "'>link</a></td>"
+                            response += \
+                                "<td><a href='" + http_path_prefix + "/flow?" + calendar["name"] + "'>link</a></td>"
                             # TODO: report which calendar event is current, if any
 
 
@@ -333,7 +363,7 @@ class OutlookListener( Sensor ):
                 client_credential=self._credentials["client_secret"])
 
         assert self._workqueue is not None
-        for calendar in self._config:
+        for calendar in self._config["calendars"]:
             workunitExceptions.labels( calendar["name"], 'Exception' ).set( 0 )
 
             self._state[calendar["name"]] = []

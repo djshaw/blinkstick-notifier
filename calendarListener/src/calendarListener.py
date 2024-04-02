@@ -91,7 +91,7 @@ class CalendarWorkunit( Workunit ):
         logging.info( "polling calendar %s", calendar["name"] )
 
         # TODO: precalculate this value
-        calendars = list( map( lambda x: x["name"], self._config ) )
+        calendars = list( map( lambda x: x["name"], self._config["calendars"] ) )
 
         refresh_credentials( calendar, credentials )
 
@@ -123,7 +123,9 @@ class CalendarWorkunit( Workunit ):
                 for event in events:
                     local_now = datetime.datetime.now( datetime.timezone.utc ).astimezone()
 
-                    start_time = event['start'].get( 'dateTime', event['start'].get( 'date' ) )[::-1].replace( ":", "", 1 )[::-1]
+                    start_time = event['start'].get( 'dateTime',
+                                                     event['start'].get( 'date' ) )[::-1] \
+                                               .replace( ":", "", 1 )[::-1]
                     # All day events have a start time of YYYY-mm-dd
                     if ISO_DATE_PATTERN.match( start_time ) is None:
                         logging.debug("skipping %s", start_time)
@@ -133,7 +135,9 @@ class CalendarWorkunit( Workunit ):
                         start_time,
                         "%Y-%m-%dT%H:%M:%S%z" )
 
-                    end_time = event['end'].get( 'dateTime', event['end'].get( 'date' ) )[::-1].replace( ":", "", 1 )[::-1]
+                    end_time = event['end'].get( 'dateTime',
+                                                 event['end'].get( 'date' ) )[::-1] \
+                                           .replace( ":", "", 1 )[::-1]
                     end_time = datetime.datetime.strptime(
                         end_time,
                         "%Y-%m-%dT%H:%M:%S%z" )
@@ -219,7 +223,8 @@ class CalendarListener( Sensor ):
                         flow.fetch_token( code=query["code"][0] )
                         token=flow.credentials
 
-                        calendar = list( filter( lambda c: c["name"] == query["state"][0], get_config() ) )[0]
+                        calendar = list(
+                            filter( lambda c: c["name"] == query["state"][0], get_config()['calendars'] ) )[0]
                         refresh_credentials( calendar, token )
 
                         with get_tokens_map_lock():
@@ -266,9 +271,10 @@ class CalendarListener( Sensor ):
 
                         with get_tokens_map_lock():
                             for key, token in get_tokens_map().items():
-                                response += "<tr><td>" + key + "</td>" + \
-                                            "<td>(" + ("not " if not token or not token.valid else "") + "valid)</td>" + \
-                                            "<td><a href='" + httpPathPrefix + "/flow?" + key + "'>link</a></td>"
+                                response += \
+                                    "<tr><td>" + key + "</td>" + \
+                                    "<td>(" + ("not " if not token or not token.valid else "") + "valid)</td>" + \
+                                    "<td><a href='" + httpPathPrefix + "/flow?" + key + "'>link</a></td>"
                                 # TODO: report which calendar event is current, if any
 
 
@@ -303,10 +309,10 @@ class CalendarListener( Sensor ):
         result = super().main()
         if result != 0:
             return result
-        
+
         assert self._workqueue is not None
         if self._config is not None:
-            for calendar in self._config:
+            for calendar in self._config["calendars"]:
                 try:
                     workunitExceptions.labels( calendar["name"] ).set( 0 )
 

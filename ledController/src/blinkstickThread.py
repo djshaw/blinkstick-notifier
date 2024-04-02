@@ -22,7 +22,7 @@ class BlinkstickThread( threading.Thread ):
         super().__init__( *args, **kwargs )
         self._message_queue = queue.Queue()
 
-        for alert in config:
+        for alert in config["alerts"]:
             blinkstickAlerts.labels( alert["name"] ).set( 0 )
 
         # TODO: validate that all the channels are between 0 and 7
@@ -31,7 +31,7 @@ class BlinkstickThread( threading.Thread ):
         self._alerts = {}
         i = 0
         logging.debug( config )
-        for alert in config:
+        for alert in config["alerts"]:
             self._alerts[alert["name"]] = alert
 
             if "priority" not in self._alerts[alert["name"]]:
@@ -213,7 +213,7 @@ class BlinkstickThread( threading.Thread ):
 
 
 class BlinkstickDTO( object ):
-    def __init__( self, blinkstick_thread, client_identifier ):
+    def __init__( self, blinkstick_thread: BlinkstickThread, client_identifier: str ):
         self._blinkstick_thread = blinkstick_thread
         self._client_identifier = client_identifier
 

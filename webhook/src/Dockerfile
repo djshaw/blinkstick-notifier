@@ -24,4 +24,4 @@ CMD python -m debugpy \
            --listen 0.0.0.0:5678 \
            webhook/webhook_listener.py
 
-FROM release AS return
+FROM release AS result

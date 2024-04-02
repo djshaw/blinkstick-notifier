@@ -5,7 +5,7 @@ import signal
 import subprocess
 import time
 import socket
-from typing import List
+from typing import Any, Generator, List
 import requests
 
 from log_monitoring import LogMonitor
@@ -16,8 +16,18 @@ def find_free_port() -> int:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         return s.getsockname()[1]
 
+class ManagedProcess:
+    def __init__(self, process: subprocess.Popen, allowed_log_lines: List[re.Pattern] | None=None):
+        self.process = process
+        # When the process is stopped, the blocking readline() will return None
+        self.log_monitor = LogMonitor(process, allowed_log_lines)
+        self.log_monitor.name = 'LogMonitor'
+        self.log_monitor.start()
+
 @contextmanager
-def managed_process( *args, allowed_log_lines: List[re.Pattern] | None=None, **kwargs ):
+def managed_process( *args,
+                     allowed_log_lines: List[re.Pattern] | None=None,
+                     **kwargs ) -> Generator[ManagedProcess, Any, None]:
     p = None
 
     try:
@@ -44,14 +54,6 @@ def managed_process( *args, allowed_log_lines: List[re.Pattern] | None=None, **k
                 # after itself
                 os.killpg(os.getpgid(p.pid), signal.SIGKILL)
 
-class ManagedProcess:
-    def __init__(self, process: subprocess.Popen, allowed_log_lines: List[re.Pattern] | None=None):
-        self.process = process
-        # When the process is stopped, the blocking readline() will return None
-        self.log_monitor = LogMonitor(process, allowed_log_lines)
-        self.log_monitor.name = 'LogMonitor'
-        self.log_monitor.start()
-
 class ManagedPrometheus:
     def __init__(self, process: ManagedProcess, prometheus_port: int):
         self.process: ManagedProcess = process
@@ -63,7 +65,7 @@ def managed_process_with_prometheus_monitoring(
         *args,
         prometheus_port: int | None=None,
         allowed_log_lines: List[re.Pattern] | None=None,
-        **kwargs ):
+        **kwargs ) -> Generator[ManagedPrometheus, Any, None]:
     if prometheus_port is None:
         i: int = 0
         while i < len(args[0]):
@@ -108,32 +110,31 @@ class ManagedLEDController(ManagedApplication):
         self.ws_port = ws_port
 
 @contextmanager
-def managed_led_controller():
+def managed_led_controller(config_file: str) -> Generator[ManagedLEDController, Any, None]:
     prometheus_port: int = find_free_port()
     http_port: int = find_free_port()
     ws_port: int = find_free_port()
     with managed_process_with_prometheus_monitoring(
         ["python3",
          "./ledController/src/ledController.py",
+         "--config",          config_file,
          "--prometheus-port", str(prometheus_port),
-         "--ws-port", str(ws_port),
-         "--http-port", str(http_port)],
-        allowed_log_lines=[re.compile(".*Unable to find config file config.yml"),
-                           re.compile(".*Unable to find config schema file (.*/)?config.schema.json"),
-                           re.compile(".*no blinksticks found!")]) as p:
+         "--ws-port",         str(ws_port),
+         "--http-port",       str(http_port)],
+        allowed_log_lines=[re.compile(".*no blinksticks found!")]) as p:
         yield ManagedLEDController(p.process, p.prometheus_port, http_port, ws_port=ws_port)
 
 @contextmanager
-def managed_webhook(led_controller_url: str, config_file: str):
+def managed_webhook(led_controller_url: str, config_file: str) -> Generator[ManagedApplication, Any, None]:
     prometheus_port: int=find_free_port()
     http_port: int=find_free_port()
     with managed_process_with_prometheus_monitoring(
         ["python3",
          "./webhook/src/webhook_listener.py",
          "--led-controller-url", led_controller_url,
-         "--config", config_file,
-         "--prometheus-port", str(prometheus_port),
-         "--http-port", str(http_port)],
+         "--config",             config_file,
+         "--prometheus-port",    str(prometheus_port),
+         "--http-port",          str(http_port)],
         allowed_log_lines=[re.compile(".*Unable to find config schema file (.*/)?config.schema.json")]) as p:
         yield ManagedApplication(p.process, p.prometheus_port, http_port)
 
@@ -149,20 +150,18 @@ class ManagedBitbucket(ManagedApplication):
 
 
 @contextmanager
-def managed_bitbucket(led_controller_url: str,
-                      config_file: str,
-                      prometheus_port: int | None = None,
-                      http_port: int | None = None,
-                      bitbucket_port: int | None = None,
-                      mongo_port: int | None = None):
+def managed_bitbucket_listener(led_controller_url: str,
+                               config_file: str,
+                               prometheus_port: int | None = None,
+                               http_port: int | None = None,
+                               bitbucket_port: int | None = None,
+                               mongo_port: int | None = None) -> Generator[ManagedBitbucket, Any, None]:
     if mongo_port is None:
         mongo_port = find_free_port()
     if prometheus_port is None:
         prometheus_port = find_free_port()
     if http_port is None:
         http_port = find_free_port()
-    if prometheus_port is None:
-        prometheus_port = find_free_port()
     env = os.environ.copy()
     env["DEFAULT_LOG_LEVEL"] = "DEBUG"
     with managed_process_with_prometheus_monitoring(
@@ -177,27 +176,31 @@ def managed_bitbucket(led_controller_url: str,
         yield ManagedBitbucket(p.process, p.prometheus_port, http_port, mongo_port)
 
 @contextmanager
-def managed_calendar_listener():
-    http_port: int = find_free_port()
-    prometheus_port: int = find_free_port()
+def managed_calendar_listener(led_controller_url: str,
+                              config_file: str,
+                              prometheus_port: int | None = None,
+                              http_port: int | None = None) -> Generator[ManagedApplication, Any, None]:
+    if http_port is None:
+        http_port = find_free_port()
+    if prometheus_port is None:
+        prometheus_port = find_free_port()
     with managed_process_with_prometheus_monitoring(
         ["python3", "/workspaces/blinkstick-notifier/calendarListener/src/calendarListener.py",
-                    "--prometheus-port", str(prometheus_port),
-                    "--http-port",       str(http_port),
-                    "--config",          "calendarListener/tests/config.yml"],
-        allowed_log_lines=[re.compile(".*Unable to find config schema file (.*/)?config.schema.json")]) as p:
+                    "--led-controller-url", led_controller_url,
+                    "--prometheus-port",    str(prometheus_port),
+                    "--http-port",          str(http_port),
+                    "--config",             config_file]) as p:
         yield ManagedApplication(p.process, p.prometheus_port, http_port)
 
 @contextmanager
-def managed_outlook_listener(credentials_file: str):
+def managed_outlook_listener(config_file: str, credentials_file: str) -> Generator[ManagedApplication, Any, None]:
     http_port = find_free_port()
     prometheus_port = find_free_port()
     with managed_process_with_prometheus_monitoring(
         ["python3", "/workspaces/blinkstick-notifier/outlookListener/src/outlookListener.py",
+                    "--config",           config_file,
                     "--prometheus-port",  str(prometheus_port),
                     "--http-port",        str(http_port),
                     "--credentials-file", credentials_file],
-        allowed_log_lines=[re.compile(".*Unable to find config file config.yml"),
-                           re.compile(".*Unable to find config schema file (.*/)?config.schema.json"),
-                           re.compile(".*no blinksticks found!")]) as p:
+        allowed_log_lines=[re.compile(".*no blinksticks found!")]) as p:
         yield ManagedApplication(p.process, p.prometheus_port, http_port)

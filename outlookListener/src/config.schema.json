@@ -1,0 +1,23 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "config.yml schema",
+    "description": "Schema for the outlook-listener config file",
+
+    "type": "object",
+    "required": ["calendars"],
+    "properties": {
+        "calendars": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["name", "notification"],
+                "name": {
+                    "type": "string"
+                },
+                "notification": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

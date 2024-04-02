@@ -1,0 +1,25 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "config.yml schema",
+    "description": "Schema for the calendar-listener config file",
+
+    "type": "object",
+    "required": ["alerts"],
+    "properties": {
+        "alerts": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["name", "channel", "color"],
+                "name": {
+                    "type": "string"
+                },
+                "channel": {
+                },
+                "color": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

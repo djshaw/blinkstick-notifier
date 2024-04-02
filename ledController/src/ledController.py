@@ -25,8 +25,13 @@ clients_gauge = Gauge(
         'clients',
         'Specifies which clients are connected',
         ['type'] )
-client_types = set(['Calendar Listener', 'Outlook Listener', 'Webhook Listener', 'Bitbucket Listener', 'ManualSet', None])
-for client in client_types:
+CLIENT_TYPES = set(['Calendar Listener',
+                    'Outlook Listener',
+                    'Webhook Listener',
+                    'Bitbucket Listener',
+                    'ManualSet',
+                    None])
+for client in CLIENT_TYPES:
     clients_gauge.labels( client ).set( 0 )
 
 
@@ -37,39 +42,24 @@ class Client:
 
 class WebSocketHandler( WebSocket ):
     def __init__( self,
+                  receive_schema:    object | None,
+                  send_schema:       object | None,
                   blinkstick_thread: BlinkstickThread,
-                  address,
-                  clients_lock: threading.Lock,
-                  clients,
+                  address:           str,
+                  clients_lock:      threading.Lock,
+                  clients:           dict,
                   *args,
                   **kwargs ):
         try:
             self._blinkstick_thread = blinkstick_thread
-            self._address = address
             self._clients = clients
             self._clients_lock = clients_lock
+            self._receive_schema = receive_schema
+            self._send_schema = send_schema
 
             super().__init__( *args, *kwargs )
-            self._blinkstick_client = BlinkstickDTO( self._blinkstick_thread, self.address )
-
-            # TODO: abstract out
-            try:
-                self._receive_schema = None
-                # TODO: don't assume we're running in a docker container
-                # TODO: don't load these json files for every websocket
-                if os.path.exists( "/app/receive.schema.json" ):
-                    with open( "/app/receive.schema.json", encoding="ascii" ) as f:
-                        self._receive_schema = json.load( f )
-            except IOError as e:
-                logging.exception( e )
-
-            try:
-                self._send_schema = None
-                if os.path.exists( "/app/send.schema.json" ):
-                    with open( "/app/send.schema.json", encoding="ascii" ) as f:
-                        self._send_schema = json.load( f )
-            except IOError as e:
-                logging.exception( e )
+            # TODO: can we remove `address`?  The parent has self.address
+            self._blinkstick_client = BlinkstickDTO( self._blinkstick_thread, address )
 
         except Exception as e:
             logging.exception( e )
@@ -87,10 +77,10 @@ class WebSocketHandler( WebSocket ):
         except jsonschema.exceptions.SchemaError as e:
             logging.error( "Error validating schema: %s", e )
 
-
-    def send_message( self, data ):
-        # TODO: if data isnt a message, call super immediately
-        self._validate_message( self._send_schema, data )
+    @override
+    def send_message( self, data: str | object ):
+        if isinstance(data, object):
+            self._validate_message( self._send_schema, data )
         super().send_message( json.dumps( data ).encode( "ascii" ) )
 
     def _update_clients_gauges( self ):
@@ -99,12 +89,13 @@ class WebSocketHandler( WebSocket ):
         # This function isn't very efficient. There are much better ways to implement. Performance
         # hasn't been a limitation yet.
 
-        total_client_types = client_types \
+        total_client_types = CLIENT_TYPES \
                            | set( map( lambda x: self._clients[x].name, self._clients ) )
         for client in total_client_types:
             clients_gauge.labels( client if client is not None else "None" ) \
                         .set( len( list( filter( lambda x: self._clients[x].name == client, self._clients ) ) ) )
 
+    @override
     def handle( self ):
         try:
             if isinstance(self.data, str):
@@ -149,7 +140,7 @@ class WebSocketHandler( WebSocket ):
         except Exception as e:
             logging.exception( e )
 
-
+    @override
     def connected( self ):
         try:
             logging.debug( "adding client %s", str( self.address ) )
@@ -161,7 +152,7 @@ class WebSocketHandler( WebSocket ):
         except Exception as e:
             logging.exception( e )
 
-
+    @override
     def handle_close( self ):
         try:
             with self._clients_lock:
@@ -199,9 +190,26 @@ class LEDController( Application ):
 
     def _start_websocket_server(self, blinkstick_thread):
         def start_websocket_server_thread():
+            receive_schema = None
+            try:
+                receive_schema = self._get_schema_from_file(
+                    os.path.join( os.path.dirname(__file__), "receive.schema.json") )
+            except Exception as e:
+                logging.warning("Unable to parse schema file receive.schema.json")
+                logging.exception(e)
+
+            send_schema = None
+            try:
+                send_schema = self._get_schema_from_file(
+                    os.path.join( os.path.dirname( __file__ ), "send.schema.json" ) )
+            except Exception:
+                logging.warning("Unable to parse schema file send.schema.json")
+
             try:
                 address = '0.0.0.0'
                 handler = partial(WebSocketHandler,
+                                  receive_schema,
+                                  send_schema,
                                   blinkstick_thread,
                                   address,
                                   self._clients_lock,

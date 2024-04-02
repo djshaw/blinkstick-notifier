@@ -16,7 +16,6 @@ requests==2.31.0
 rpds-py==0.17.1
 setuptools==69.0.3
 simple-websocket-server==0.4.4
-typing==3.7.4.3
 urllib3==2.2.0
 websocket-client==1.7.0
 wheel==0.42.0

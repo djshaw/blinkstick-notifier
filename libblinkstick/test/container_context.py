@@ -1,5 +1,6 @@
 import time
 from contextlib import contextmanager
+from typing import Any, Generator
 
 import docker
 import docker.models
@@ -13,7 +14,7 @@ class ManagedContainer:
         self.container = container
 
 @contextmanager
-def managed_container( *args, **kwargs ):
+def managed_container( *args, **kwargs ) -> Generator[ManagedContainer, Any, None]:
     client = docker.from_env()
     client.ping()
     container = None
@@ -36,7 +37,7 @@ class ManagedMongo(ManagedContainer):
         self.mongo_port = mongo_port
 
 @contextmanager
-def managed_mongo():
+def managed_mongo() -> Generator[ManagedMongo, Any, None]:
     mongo_port = find_free_port()
     with managed_container("mongo",
                            ports={"27017": str(mongo_port)}

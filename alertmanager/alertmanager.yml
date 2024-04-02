@@ -11,6 +11,6 @@ route:
 receivers:
   - name: 'pager'
     webhook_configs:
-      - url: "http://webhook:8080/"
+      - url: "http://webhook-listener:8080/"
         send_resolved: true
 

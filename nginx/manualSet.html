@@ -48,9 +48,9 @@
                  .done(function(data) {
                     let config = jsyaml.load( data )
                     let append = "";
-                    for( let i = 0; i < config.length; i += 1 )
+                    for( let i = 0; i < config.alerts.length; i += 1 )
                     {
-                        append += "<tr><td>" + config[i].name + "</td><td><button class=\"btn btn-primary\">Enable</button></td></tr>"
+                        append += "<tr><td>" + config.alerts[i].name + "</td><td><button class=\"btn btn-primary\">Enable</button></td></tr>"
                     }
                     $( "#table" )[0].innerHTML = append;
                     $( "#table button" )

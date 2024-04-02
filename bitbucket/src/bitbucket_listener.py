@@ -4,7 +4,9 @@ from http.server import SimpleHTTPRequestHandler
 import logging
 import sys
 
-from typing import List, Type, override
+from typing import Any, List, Type, override
+from atlassian.bitbucket import Cloud
+from atlassian.bitbucket.cloud.repositories.pipelines import Pipeline
 import pymongo
 from pymongo import MongoClient
 import requests
@@ -17,93 +19,64 @@ class JsonDataAccess( object ):
     def __init__( self, json ):
         self._json = json
 
-    def json( self ):
+    # dict[str, str | this type | array | none | number]
+    def json( self ) -> dict:
         return self._json
 
 
 class UserDataAccess( JsonDataAccess ):
-    def get_uuid( self ):
+    def get_uuid( self ) -> str:
         return self._json["uuid"]
 
-    def get_username( self ):
+    def get_username( self ) -> str:
         return self._json["username"]
 
 
 # TODO: there's got to be a library for all of this
+#           THERE IS!  Use atlassian-python-api
 class PipelineDataAccess( JsonDataAccess ):
-    def get_uuid( self ):
+    def get_uuid( self ) -> str:
         return self._json["uuid"]
 
-    def get_successful( self ):
+    def get_successful( self ) -> bool:
         return self._json["state"]["type"] == "pipeline_state_completed" and \
                self._json["state"]["result"]["name"] == "pipeline_state_completed_successful"
 
-    def get_failure( self ):
+    def get_failure( self ) -> bool:
         return self._json["state"]["type"] == "pipeline_state_completed" and \
                self._json["state"]["result"]["type"] == "pipeline_state_completed_failed"
-
-    def get_creator( self ):
-        # TODO: can I return a UserDataAccess?
-        return self._json["creator"]["uuid"]
-
-    def get_repository( self ):
-        # TODO: can I return a RepositoryDataAccess?
-        return self._json["repository"]["full_name"]
 
 
 class BitbucketDataAccess( object ):
     # TODO: create a password object so that in a stack trace or dump, the password isn't written
     # in the clear (or at all)
     def __init__( self, base_url: str, workspace: str, username: str, password: str ):
-        self._base_url = base_url
         self._workspace = workspace
-        self._session = requests.Session()
-        self._session.auth = (username, password)
+        self._bitbucket = Cloud(base_url, username=username, password=password)
 
         # TODO: write a requests event listener that sends event messages to a specified logger
         self._logging = logging.getLogger('BITBUCKET_API')
 
     def get_current_user( self ) -> UserDataAccess:
         # TODO: use url builders
-        result = self._session.get( f"{self._base_url}/2.0/user" )
-        return UserDataAccess( result.json() )
+        response = self._bitbucket.get("/user")
+        return UserDataAccess( response )
 
     def get_user( self, identifier: str ) -> UserDataAccess:
-        result = self._session.get( f"{self._base_url}/2.0/users/" + str( identifier ) )
-        return UserDataAccess( result.json() )
+        response = self._bitbucket.get("/users/")
+        assert isinstance(response, requests.Response)
+        return UserDataAccess( response )
 
     def list_pipelines( self, repository: str ) -> List[PipelineDataAccess]:
-        result = []
-        # TODO: query for more pages of pipelines
-        # sort=-created_on :                               order by created, descending
-        # fields%3D%2Bvalues.creator%2C%2Bvalues.trigger : fields=+values.creator,+values.trigger
-        url = f"{self._base_url}/2.0/repositories/{self._workspace}/" \
-                + f"{repository}/pipelines?" \
-                + "pagelen=200&fields%3D%2Bvalues.creator%2C%2Bvalues.trigger" \
-                + "&sort=-created_on"
-        while True:
-            pipelines = self._session.get( url ).json()
-            if "values" in pipelines:
-                for pipeline in pipelines["values"]:
-                    result.append( PipelineDataAccess( pipeline ) )
-
-            if "next" in pipelines and pipelines["next"] is not None:
-                url = pipelines["next"]
-            else:
-                break
-
-            if len( result ) > 100:
-                break
-
-            # TODO: also check to see if the age is >= C
-        # TODO: return a list of pipeline steps
-        return result
+        pipelines = self._bitbucket.repositories.get(self._workspace, repository) \
+                         .pipelines.each(sort="-created_on")
+        return [PipelineDataAccess(pipeline.data) for pipeline in pipelines]
 
 
 class MongoDataAccess:
     _database = None
 
-    def __init__( self, connection_string ):
+    def __init__( self, connection_string: str ):
         self._database = None
         try:
             client = MongoClient( connection_string )
@@ -120,26 +93,26 @@ class MongoDataAccess:
     def has_database(self) -> bool:
         return self._database is not None
 
-    def server_status( self ):
+    def server_status( self ) -> dict[str, Any]:
         assert self._database is not None
         with pymongo.timeout(10):
             return self._database.command("serverStatus")
 
-    def set_key_value( self, key, value ):
+    def set_key_value( self, key: str, value: str ) -> None:
         if self._database is not None:
             self._database["properties"].update_one( { "_id": key }, { "$set": { key: value } }, upsert=True )
 
     # TODO: this isn't rendering in mongo-express as key-value. It's being rendered as _id/currentUesr
-    def set_current_user( self, user_data_access ):
+    def set_current_user( self, user_data_access: UserDataAccess ) -> None:
         self.set_key_value( "currentUser", user_data_access.get_uuid() )
         self.set_user( user_data_access )
 
-    def set_user( self, user_data_access ):
+    def set_user( self, user_data_access: UserDataAccess ) -> None:
         if self._database is not None:
             self._database["users"].update_one( { "_id": user_data_access.get_uuid() },
                                                 { "$set": user_data_access.json() }, upsert=True )
 
-    def get_user( self, uuid ) -> UserDataAccess | None:
+    def get_user( self, uuid: str ) -> UserDataAccess | None:
         if self._database is not None:
             user = self._database["users"].find( { "_id": uuid } )
             if user is None:
@@ -152,6 +125,7 @@ class MongoDataAccess:
     def get_current_user( self ) -> UserDataAccess | None:
         if self._database is not None:
             current_user_uuid = self._database["properties"].find({"_id": "currentUser"})
+            # TODO: current_user_id is None
             uuid = current_user_uuid[0]["currentUser"] # pylint: disable=unsubscriptable-object
             if uuid is None:
                 return None
@@ -168,10 +142,10 @@ class BuildFailureManager( object ):
         self._config = config
         self._failures = {}
 
-    def get_failures( self ):
+    def get_failures( self ) -> dict[str, str]:
         return self._failures
 
-    def set_failed_build( self, repository, pipeline_uuid ):
+    def set_failed_build( self, repository: str, pipeline_uuid: str ) -> None:
         had_failure = len( self._failures )
 
         self._failures[repository] = pipeline_uuid
@@ -179,7 +153,7 @@ class BuildFailureManager( object ):
             self._ws.enable( self._config["notification"] )
         logging.info( str( self._failures ) )
 
-    def clear_failed_build( self, repository, pipeline_uuid ):
+    def clear_failed_build( self, repository: str, pipeline_uuid: str ) -> None:
         # TODO: There's a readers/writers race condition here
         if repository in self._failures:
             del self._failures[repository]
@@ -196,11 +170,11 @@ class PipelineWorkunit( Workunit ):
     def __init__( self,
                   build_failure_manager: BuildFailureManager,
                   df,
-                  period_seconds,
+                  period_seconds: int,
                   bitbucket,
                   workqueue,
-                  mongo_data_access,
-                  repository ):
+                  mongo_data_access: MongoDataAccess,
+                  repository: str ):
         super().__init__( df )
 
         self._build_failure_manager = build_failure_manager
@@ -212,7 +186,7 @@ class PipelineWorkunit( Workunit ):
 
 
     @override
-    def work( self ):
+    def work( self ) -> None:
         try:
             pipelines = self._bitbucket.list_pipelines( self._repository )
             # TODO: Don't report any failed pipelines that occurred before the
@@ -248,7 +222,7 @@ class PipelineWorkunit( Workunit ):
                 # TODO: prometheus workunit exception
 
 class BitbucketSensor( Sensor ):
-    def __init__(self, args):
+    def __init__(self, args: List[str]):
         super().__init__(args, "Bitbucket Listener", "/bitbucket")
 
         self._mongo_data_access = MongoDataAccess( self._parsed_args.mongo_url )
@@ -276,7 +250,8 @@ class BitbucketSensor( Sensor ):
         http_path_prefix = self._http_path_prefix
 
         class HTTPRequestHandler( SimpleHTTPRequestHandler ):
-            def do_GET( self ): # pylint: disable=invalid-name
+            @override
+            def do_GET( self ) -> None: # pylint: disable=invalid-name
                 response = None
                 status = 500
                 headers = {}

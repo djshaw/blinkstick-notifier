@@ -1,0 +1,4 @@
+alerts:
+  - name: AlertManagerAlert
+    channel: 0
+    color: red

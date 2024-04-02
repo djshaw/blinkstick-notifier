@@ -8,7 +8,7 @@ logging.basicConfig( level=logging.DEBUG )
 class BlinkstickThreadTest( unittest.TestCase ):
     def test_empty( self ):
         """ Create and terminate the thread """
-        thread = BlinkstickThread( config={}, daemon=True )
+        thread = BlinkstickThread( config={"alerts": {}}, daemon=True )
         thread.start()
 
         self.assertEqual( [None, None, None, None, None, None, None, None], thread.get_visible_alerts() )
@@ -22,15 +22,15 @@ class BlinkstickThreadTest( unittest.TestCase ):
         """ Turn an alert on and off. There should be no alerts after the alert is off. """
         alert = "Foo"
 
-        thread = BlinkstickThread( config=[ { "name": alert, "channel": 0, "color": "blue" } ], daemon=True )
+        thread = BlinkstickThread( config={ "alerts": [ { "name": alert, "channel": 0, "color": "blue" } ] }, daemon=True )
         thread.start()
 
-        client_identifier = ("me",)
+        client_identifier = "me"
 
-        blinkstick_api = BlinkstickDTO( thread, client_identifier )
+        blinkstick_api = BlinkstickDTO( thread, str(client_identifier) )
 
         blinkstick_api.enable( alert )
-        self.assertEqual( [ { alert: set( (client_identifier,) ) }, {}, {}, {}, {}, {}, {}, {} ],
+        self.assertEqual( [ { alert: {client_identifier} }, {}, {}, {}, {}, {}, {}, {} ],
                           thread.get_current_alerts() )
 
         blinkstick_api.disable( alert )
@@ -45,14 +45,14 @@ class BlinkstickThreadTest( unittest.TestCase ):
         """ When a client disconnects, all the client's alerts are removed """
         alert = "Foo"
 
-        thread = BlinkstickThread( config=[ { "name": alert, "channel": 0, "color": "blue" } ], daemon=True )
+        thread = BlinkstickThread( config={"alerts": [ { "name": alert, "channel": 0, "color": "blue" } ] }, daemon=True )
         thread.start()
 
-        client_identifier = ("me",)
+        client_identifier = "me"
         blinkstick_api = BlinkstickDTO( thread, client_identifier )
 
         blinkstick_api.enable( alert )
-        self.assertEqual( [ { alert: set( (client_identifier,) ) }, {}, {}, {}, {}, {}, {}, {}],
+        self.assertEqual( [ { alert: {client_identifier} }, {}, {}, {}, {}, {}, {}, {}],
                           thread.get_current_alerts() )
         blinkstick_api.unregister()
 
@@ -67,12 +67,12 @@ class BlinkstickThreadTest( unittest.TestCase ):
         alert2 = "alert2"
 
         # alert1 has higher priority because it comes earlier in the array
-        thread = BlinkstickThread( config=[ { "name": alert1, "channel": 0, "color": "blue" },
-                                            { "name": alert2, "channel": 0, "color": "red"  }],
+        thread = BlinkstickThread( config={ "alerts": [ { "name": alert1, "channel": 0, "color": "blue" },
+                                                        { "name": alert2, "channel": 0, "color": "red"  }] },
                                    daemon=True )
         thread.start()
 
-        client_identifier = ("me",)
+        client_identifier = "me"
 
         blinkstick_api = BlinkstickDTO( thread, client_identifier )
 
@@ -83,7 +83,7 @@ class BlinkstickThreadTest( unittest.TestCase ):
                           thread.get_current_alerts() )
 
         blinkstick_api.enable( alert1 )
-        self.assertEqual( [{alert1: set( (client_identifier,) ), alert2: set( (client_identifier,) ) },
+        self.assertEqual( [{alert1: {client_identifier}, alert2: {client_identifier} },
                            {},
                            {},
                            {},
@@ -103,19 +103,19 @@ class BlinkstickThreadTest( unittest.TestCase ):
         alert2 = "alert2"
 
         # alert1 has higher priority because it comes earlier in the array
-        thread = BlinkstickThread( config=[ { "name": alert1, "channel": 0, "color": "blue" },
-                                            { "name": alert2, "channel": 1, "color": "red"  }],
+        thread = BlinkstickThread( config={ "alerts": [ { "name": alert1, "channel": 0, "color": "blue" },
+                                                        { "name": alert2, "channel": 1, "color": "red"  }] },
                                    daemon=True )
         thread.start()
 
-        client_identifier = ("me",)
+        client_identifier = "me"
         blinkstick_api = BlinkstickDTO( thread, client_identifier )
 
         blinkstick_api.enable( alert1 )
         blinkstick_api.enable( alert2 )
 
-        self.assertEqual( [{alert1: set( (client_identifier,) )},
-                           {alert2: set( (client_identifier,) )},
+        self.assertEqual( [{alert1: {client_identifier}},
+                           {alert2: {client_identifier}},
                            {},
                            {},
                            {},
@@ -131,11 +131,11 @@ class BlinkstickThreadTest( unittest.TestCase ):
     def test_disable_alert_that_was_never_enabled( self ):
         """ Disable an alert that was never enabled. As long as we don't crash, we should be fine. """
         alert = "Foo"
-        thread = BlinkstickThread( config=[{"name": alert, "channel": 0, "color": "blue"}],
+        thread = BlinkstickThread( config={"alerts": [{"name": alert, "channel": 0, "color": "blue"}]},
                                    daemon=True )
         thread.start()
 
-        client_identifier = ("me",)
+        client_identifier = "me"
         blinkstick_api = BlinkstickDTO( thread, client_identifier )
 
         blinkstick_api.disable( alert )
@@ -146,11 +146,11 @@ class BlinkstickThreadTest( unittest.TestCase ):
 
     def test_enable_alert_that_has_no_configuration( self ):
         """ Enable an alert that has no configuration. The blinkstick thread should no-op and not crash. """
-        thread = BlinkstickThread( config=[],
+        thread = BlinkstickThread( config={"alerts": []},
                                    daemon=True )
         thread.start()
 
-        client_identifier = ("me",)
+        client_identifier = "me"
         blinkstick_api = BlinkstickDTO( thread, client_identifier )
 
         blinkstick_api.enable( "Foo" )
@@ -162,11 +162,11 @@ class BlinkstickThreadTest( unittest.TestCase ):
 
     def test_disable_alert_that_has_no_configuration( self ):
         """ Disable an alert that has no configuration. The blinkstick thread should no-op and not crash. """
-        thread = BlinkstickThread( config=[],
+        thread = BlinkstickThread( config={"alerts": []},
                                    daemon=True )
         thread.start()
 
-        client_identifier = ("me",)
+        client_identifier = "me"
         blinkstick_api = BlinkstickDTO( thread, client_identifier )
 
         blinkstick_api.disable( "Foo" )

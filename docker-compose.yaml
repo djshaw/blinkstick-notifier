@@ -8,6 +8,8 @@ x-logging: &loki-logging
 x-python-version: &python-version
     PYTHON_VERSION: 3.12
 
+x-build-target: &build-target debug
+
 services:
     led-controller:
         volumes:
@@ -19,6 +21,7 @@ services:
         build:
             context: .
             dockerfile: ledController/src/Dockerfile
+            target: *build-target
             args:
                 *python-version
         restart: unless-stopped
@@ -43,6 +46,7 @@ services:
         build:
             context: .
             dockerfile: calendarListener/src/Dockerfile
+            target: *build-target
             args:
                 *python-version
         restart: unless-stopped
@@ -53,6 +57,7 @@ services:
         build:
             context: .
             dockerfile: bitbucket/src/Dockerfile
+            target: *build-target
             args:
                 *python-version
         volumes:
@@ -79,6 +84,7 @@ services:
         build:
             context: .
             dockerfile: outlookListener/src/Dockerfile
+            target: *build-target
             args:
                 *python-version
         restart: unless-stopped
@@ -89,6 +95,7 @@ services:
         build:
             context: .
             dockerfile: webhook/src/Dockerfile
+            target: *build-target
             args:
                 *python-version
         restart: unless-stopped

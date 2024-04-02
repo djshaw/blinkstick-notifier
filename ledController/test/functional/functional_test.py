@@ -12,7 +12,7 @@ logging.basicConfig( level=logging.DEBUG )
 
 class FunctionalTest( unittest.TestCase ):
     def test_enable_disable( self ):
-        with managed_led_controller() as led_controller:
+        with managed_led_controller('ledController/test/config.yml') as led_controller:
             open_sem = threading.Semaphore(0)
             message_sem = threading.Semaphore(0)
 

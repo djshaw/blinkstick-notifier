@@ -65,32 +65,52 @@ class Application:
                             dest='http_port')
         return parser
 
+    def _get_resource_file_contents( self, file_path: str ) -> str:
+        if os.path.exists( file_path ):
+            with open( file_path, 'r', encoding='ascii' ) as f:
+                return f.read()
+        raise FileNotFoundError( f"Could not file resource file {file_path}" )
+
+    def _get_yaml_resource_file_contents( self, file_path: str ) -> object:
+        return yaml.safe_load(self._get_resource_file_contents(file_path))
+
+    def _get_schema_from_file( self, file_path ) -> object | str | None:
+        try:
+            content = self._get_resource_file_contents(file_path)
+            if file_path.endswith('.json'):
+                return json.loads(content)
+
+            logging.info(file_path.ends_with('.yaml'))
+            if file_path.endswith('.yaml') or file_path.ends_with('.yml'):
+                return yaml.safe_load(content)
+
+            logging.warning("unable to identify the content of resource file %s", file_path)
+            return content
+        except Exception:
+            logging.warning("Unable to load schema file %s", file_path)
+            return None
+
     # TODO: unit test
     # TODO: pass in parsed args
     # TODO: check for environment variables?
-    def _get_config( self, config_filename="config.yml", schema_filename="config.schema.json" ):
+    def _get_config( self, config_filename, schema_filename ) -> dict:
         # TODO: abstract out loading and validating of config.yml
-        config = {}
+        config = None
         if config_filename is not None:
-            if os.path.exists( config_filename ):
-                try:
-                    with open( config_filename, 'r', encoding="ascii" ) as f:
-                        config = yaml.safe_load( f )
-                except Exception as e:
-                    logging.error( "Unable to read and parse config file %s", config_filename )
-                    logging.exception( e )
-            else:
-                logging.warning( "Unable to find config file %s", config_filename )
-        else:
+            config = self._get_yaml_resource_file_contents(config_filename)
+        if config is None:
             logging.warning( "Using an empty config file" )
+            config = {}
 
         if schema_filename is not None and os.path.exists( schema_filename ):
-            with open( schema_filename, 'r', encoding='ascii') as f:
-                schema = json.load( f )
+            schema = self._get_schema_from_file(schema_filename)
+            if not isinstance(schema, object):
+                logging.warning("Unable to load schema file %s", schema_filename)
 
-                # Purposefully only log an error. We want to continue to run if we can.
+            # Purposefully only log an error. We want to continue to run if we can.
+            else:
                 try:
-                    jsonschema.validate(instance=config, schema=schema)
+                    jsonschema.validate(instance=config, schema=schema) # type: ignore
                 except jsonschema.exceptions.ValidationError as e:
                     logging.error( "Error validating json: %s", e )
                 except jsonschema.exceptions.SchemaError as e:
@@ -98,13 +118,16 @@ class Application:
         else:
             logging.warning( "Unable to find config schema file %s", schema_filename )
 
+        logging.info(config)
+        logging.info(type(config))
+        assert isinstance(config, dict)
         return config
 
 
     def install_signal_handler(self):
         terminate_semaphore = threading.Semaphore(0)
         def signal_handler( signum, frame ):
-            if signum == signal.SIGINT or signum == signal.SIGTERM:
+            if signum in [ signal.SIGINT, signal.SIGTERM ]:
                 terminate_semaphore.release()
         signal.signal( signal.SIGINT,  signal_handler )
         signal.signal( signal.SIGTERM, signal_handler )
@@ -237,6 +260,8 @@ class Sensor( Application ):
         result = super().main()
         if result != 0:
             return result
+        # TODO: don't set the `up` metric until a websocket connection is established (or create a
+        # `connected` metric)
         self.start_websocket_client()
         self.start_work_queue()
 
