@@ -218,7 +218,7 @@ class Application:
         return 0
 
 class Sensor( Application ):
-    def __init__( self, args, sensor_name, http_path_prefix ):
+    def __init__( self, args, sensor_name: str, http_path_prefix: str ):
         super().__init__( args )
         self._sensor_name = sensor_name
         self._http_path_prefix = http_path_prefix
@@ -242,7 +242,7 @@ class Sensor( Application ):
     def get_http_path_prefix( self ):
         return self._http_path_prefix
 
-    def start_websocket_client( self ):
+    def start_websocket_client( self ) -> WebsocketClient:
         if self._ws is None:
             self._ws = WebsocketClient( self._parsed_args.led_controller_url,
                                         name=self._sensor_name,

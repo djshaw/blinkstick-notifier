@@ -6,16 +6,16 @@ import sys
 
 from typing import Any, List, Type, override
 from atlassian.bitbucket import Cloud
-from atlassian.bitbucket.cloud.repositories.pipelines import Pipeline
 import pymongo
 from pymongo import MongoClient
 import requests
 
 from myblinkstick.navbar import Navbar
+from myblinkstick.websocket_client import WebsocketClient
 from myblinkstick.workqueue import Workunit
 from myblinkstick.application import Sensor
 
-class JsonDataAccess( object ):
+class JsonDataAccess:
     def __init__( self, json ):
         self._json = json
 
@@ -32,8 +32,6 @@ class UserDataAccess( JsonDataAccess ):
         return self._json["username"]
 
 
-# TODO: there's got to be a library for all of this
-#           THERE IS!  Use atlassian-python-api
 class PipelineDataAccess( JsonDataAccess ):
     def get_uuid( self ) -> str:
         return self._json["uuid"]
@@ -47,7 +45,7 @@ class PipelineDataAccess( JsonDataAccess ):
                self._json["state"]["result"]["type"] == "pipeline_state_completed_failed"
 
 
-class BitbucketDataAccess( object ):
+class BitbucketDataAccess:
     # TODO: create a password object so that in a stack trace or dump, the password isn't written
     # in the clear (or at all)
     def __init__( self, base_url: str, workspace: str, username: str, password: str ):
@@ -69,7 +67,7 @@ class BitbucketDataAccess( object ):
 
     def list_pipelines( self, repository: str ) -> List[PipelineDataAccess]:
         pipelines = self._bitbucket.repositories.get(self._workspace, repository) \
-                         .pipelines.each(sort="-created_on")
+                        .pipelines.each(sort="-created_on")
         return [PipelineDataAccess(pipeline.data) for pipeline in pipelines]
 
 
@@ -135,9 +133,8 @@ class MongoDataAccess:
             return None
 
 
-# TODO: this is easy to unit test
-class BuildFailureManager( object ):
-    def __init__( self, ws, config ):
+class BuildFailureManager:
+    def __init__( self, ws: WebsocketClient, config ):
         self._ws = ws
         self._config = config
         self._failures = {}
@@ -153,7 +150,7 @@ class BuildFailureManager( object ):
             self._ws.enable( self._config["notification"] )
         logging.info( str( self._failures ) )
 
-    def clear_failed_build( self, repository: str, pipeline_uuid: str ) -> None:
+    def clear_failed_build( self, repository: str ) -> None:
         # TODO: There's a readers/writers race condition here
         if repository in self._failures:
             del self._failures[repository]
@@ -199,7 +196,7 @@ class PipelineWorkunit( Workunit ):
                 if pipelines[0].get_failure():
                     self._build_failure_manager.set_failed_build( self._repository, pipelines[0].get_uuid() )
                 else:
-                    self._build_failure_manager.clear_failed_build( self._repository, pipelines[0].get_uuid() )
+                    self._build_failure_manager.clear_failed_build( self._repository )
 
         except Exception as e:
             logging.exception( e )
@@ -321,6 +318,7 @@ class BitbucketSensor( Sensor ):
         if result != 0:
             return result
 
+        assert self._ws is not None
         self._build_failure_manager = BuildFailureManager( self._ws, self._config )
         self._bitbucket = BitbucketDataAccess(
             self._parsed_args.bitbucket_url,

@@ -4,6 +4,7 @@ from functools import partial
 import http
 import http.server
 from http.server import BaseHTTPRequestHandler
+import json
 import logging
 import re
 import threading
@@ -30,32 +31,60 @@ class HTTPRequestHandler( BaseHTTPRequestHandler ):
     PIPELINES_REGEX    = re.compile("/2.0/repositories/([a-zA-Z-]*)/([a-zA-Z0-9-]*)/pipelines/(\\?.*)?$")
     PAGE_REGEX         = re.compile(".*page=(\\d).*")
 
-    def __init__(self, listener: MockBitbucketListener, *args, **kwargs):
+    def __init__(self,
+                 httpd_port: int,
+                 listener: MockBitbucketListener,
+                 *args,
+                 **kwargs):
         self._listener = listener
+        self._httpd_port = httpd_port
         super().__init__(*args, **kwargs)
+
+    def _replace_json(self, o: dict[str, Any], pattern, replace) -> dict[str, Any]:
+        for key, value in o.items():
+            if isinstance(value, str):
+                o[key] = o[key].replace(pattern, replace)
+
+            if isinstance(value, dict):
+                self._replace_json(o[key], pattern, replace)
+
+        return o
+
+    def _update_bitbucket_url(self, o: dict[str, Any]) -> dict[str, Any]:
+        return self._replace_json(o, "https://api.bitbucket.org/", f"http://127.0.0.1:{self._httpd_port}/")
+
 
     def do_GET( self ): # pylint: disable=invalid-name
         response = None
         status = 500
         headers = {}
+
+        o = None
         try:
             # TODO: the test should dictate which files are returned
-            if self.path == "/2.0/user":
-                status, response = self._listener.get_user()
+            if o is None:
+                if self.path == "/2.0/user":
+                    status, o = self._listener.get_user()
 
-            m = self.REPOSITORIES_REGEX.match(self.path)
-            if m is not None:
-                status, response = self._listener.get_repository(m.group(1))
-                return
+            if o is None:
+                m = self.REPOSITORIES_REGEX.match(self.path)
+                if m is not None:
+                    status, o = self._listener.get_repository(m.group(1))
 
-            m = self.PIPELINES_REGEX.match(self.path)
-            if m is not None:
-                page = 1
-                page_match = self.PAGE_REGEX.match(self.path)
-                if page_match is not None:
-                    page = int(page_match.group(1))
-                status, response = self._listener.get_pipelines(m.group(1), m.group(2), page)
-                return
+            if o is None:
+                m = self.PIPELINES_REGEX.match(self.path)
+                if m is not None:
+                    page = 1
+                    page_match = self.PAGE_REGEX.match(self.path)
+                    if page_match is not None:
+                        page = int(page_match.group(1))
+                    status, o = self._listener.get_pipelines(m.group(1), m.group(2), page)
+
+            if o is not None and isinstance(o, str):
+                response = json.dumps(self._update_bitbucket_url(json.loads(o)))
+                print(response)
+            else:
+                response = ""
 
         finally:
             self.send_response( status )
@@ -66,7 +95,6 @@ class HTTPRequestHandler( BaseHTTPRequestHandler ):
                 if isinstance( response, str ):
                     response = response.encode( "utf-8" )
                 self.wfile.write( response )
-
 
 
 class MockBitbucket:
@@ -81,7 +109,7 @@ def managed_mock_bitbucket_context(listener: MockBitbucketListener,
 
     def start_websocket_server():
         try:
-            handler = partial(HTTPRequestHandler, listener)
+            handler = partial(HTTPRequestHandler, httpd_port, listener)
             httpd = http.server.HTTPServer(('0.0.0.0', httpd_port), handler )
             httpd.serve_forever()
         except Exception as e:
