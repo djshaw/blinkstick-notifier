@@ -18,11 +18,10 @@ All containers send logs to loki and metrics to prometheus.  The prometheus and
 alertmanager links to the webhook sensor have been added for emphasis.
 
 Each sensor has it's own links to outside services. For instance, the
-[`calendarListener`](calendarListener/README.md) interrogates the google 
+[`calendarListener`](calendarListener/README.md) interrogates the google
 calendar api for a list of calendar events.  Similarly, the `outlookListener`
 interrogates the microsoft graph api for a list of calendar events.  Both
 sensors send a message to the led-controller when a meeting is active.
-
 
 ## led-controller
 
@@ -44,7 +43,6 @@ activated.  The highest priority condition specifies the active colour.
 
 If the connection to sensor is lost, the state for that sensor is removed.
 
-
 ## Sensors
 
 There are 4 different sensors:
@@ -56,18 +54,18 @@ There are 4 different sensors:
 | `bitbucketListener` | Monitors bitbucket pipelines for failed builds |
 | `webhookListener`   | Listens for alerts raised by prometheus via alertmanager |
 
-
 ## manual-set
 
 The `nginx` container hosts `manualSet.html`, a debugging utility that allows
 a developer to enable any named condition.  They can disabled the named
 condition that they enabled.
 
-
 ## Suggested Configuration
 
+_See also_ [multipass.md](multipass.md)
+
 Using too many leds risks not being able to distinguish between conditions.
-Grouping conditions with priorities allows a user to quickly decern which
+Grouping conditions with priorities allows a user to quickly discern which
 organization needs attention.
 
 For instance, dedicating the first led to unexpected Alert Manager alerts
@@ -77,6 +75,7 @@ Assigning the second led to personal events, and the third led to work events
 means that only the highest priority alert is coming through for the grouping.
 
 Alerts can be categorized to their importance (from highest to lowest):
+
 * Loss of refresh token or prometheus alert
 * A current calendar event (ostensibly a meeting)
 * Build failures
@@ -84,4 +83,3 @@ Alerts can be categorized to their importance (from highest to lowest):
 Keeping the meaning of colours consistent also assists with quickly
 identification issues.  Errors coloured red, calendar events blue, and build
 failures purple.
-

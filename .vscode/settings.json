@@ -21,5 +21,11 @@
     "python.testing.unittestEnabled": true,
     "python.testing.autoTestDiscoverOnSaveEnabled": true,
     "python.analysis.typeCheckingMode": "basic",
-    "python.analysis.autoImportCompletions": false
+    "python.analysis.autoImportCompletions": false,
+    "cSpell.words": [
+        "dumpxml",
+        "hostdev",
+        "lsusb",
+        "multipassd"
+    ]
 }

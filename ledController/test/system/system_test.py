@@ -30,22 +30,21 @@ class SystemTest(unittest.TestCase):
                            encoding='ascii' ) as f:
                     logging.info( "returning sampleUser.json to user query" )
                     # TODO: set response type to application/json
-                    return 200, f.read()
+                    return 200, json.loads(f.read())
 
             @override
             def get_repository(self, repository: str) -> Tuple[int, str]:
-                # TODO: need to update urls to 127.0.0.1:{http_port}!
                 with open( '/workspaces/blinkstick-notifier/bitbucket/test/functional/sampleRepository.json',
                            'r',
                            encoding='ascii' ) as f:
-                    return 200, f.read()
+                    return 200, json.loads(f.read())
 
             @override
             def get_pipelines(self, workspace: str, project: str, page: int) -> Tuple[int, str]:
                 with open( '/workspaces/blinkstick-notifier/bitbucket/test/functional/sampleEmptyPipeline.json',
                            'r',
                            encoding='ascii' ) as f:
-                    return 200, f.read()
+                    return 200, json.loads(f.read())
         bitbucket_listener = MyBitbucketListener()
 
         with managed_led_controller('ledController/test/config.yml') as led_controller, \

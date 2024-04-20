@@ -14,15 +14,15 @@ from process_context import find_free_port
 
 class MockBitbucketListener:
     @abstractmethod
-    def get_user(self) -> Tuple[int, str]:
+    def get_user(self) -> Tuple[int, dict[str, Any]]:
         pass
 
     @abstractmethod
-    def get_repository(self, repository: str) -> Tuple[int, str]:
+    def get_repository(self, repository: str) -> Tuple[int, dict[str, Any]]:
         pass
 
     @abstractmethod
-    def get_pipelines(self, workspace: str, project: str, page: int) -> Tuple[int, str]:
+    def get_pipelines(self, workspace: str, project: str, page: int) -> Tuple[int, dict[str, Any]]:
         pass
 
 class HTTPRequestHandler( BaseHTTPRequestHandler ):
@@ -58,7 +58,6 @@ class HTTPRequestHandler( BaseHTTPRequestHandler ):
         response = None
         status = 500
         headers = {}
-
         o = None
         try:
             # TODO: the test should dictate which files are returned
@@ -80,9 +79,8 @@ class HTTPRequestHandler( BaseHTTPRequestHandler ):
                         page = int(page_match.group(1))
                     status, o = self._listener.get_pipelines(m.group(1), m.group(2), page)
 
-            if o is not None and isinstance(o, str):
-                response = json.dumps(self._update_bitbucket_url(json.loads(o)))
-                print(response)
+            if o is not None:
+                response = json.dumps(self._update_bitbucket_url(o))
             else:
                 response = ""
 
